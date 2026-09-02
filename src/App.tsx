@@ -8,9 +8,10 @@ import { HomeHistory } from './components/HomeHistory'
 import { VisitDetail } from './components/VisitDetail'
 import type { VisitSummary } from './models/visit'
 import { HistoryList } from './components/HistoryList'
+import { PrizeVisitDetail } from './components/PrizeVisitDetail'
 import './App.css'
 
-type Screen = 'home' | 'stores' | 'select-store' | 'prizes' | 'play' | 'visit-detail' | 'history-list'
+type Screen = 'home' | 'stores' | 'select-store' | 'prizes' | 'play' | 'visit-detail' | 'history-list' | 'prize-detail'
 type PendingFeature = 'memory' | 'history' | null
 
 const getErrorMessage = (error: unknown) =>
@@ -23,6 +24,8 @@ function App() {
   const [selectedPrize, setSelectedPrize] = useState<Prize | null>(null)
   const [selectedVisit, setSelectedVisit] = useState<VisitSummary | null>(null)
   const [detailOrigin, setDetailOrigin] = useState<'home'|'history-list'>('home')
+  const [selectedVisitPrizeId,setSelectedVisitPrizeId]=useState<string|null>(null)
+  const [playOrigin,setPlayOrigin]=useState<'prizes'|'prize-detail'>('prizes')
   const [storeName, setStoreName] = useState('')
   const [editingStore, setEditingStore] = useState<Store | null>(null)
   const [pendingFeature, setPendingFeature] = useState<PendingFeature>(null)
@@ -128,17 +131,19 @@ function App() {
   }
 
   if (screen === 'play' && selectedStore && selectedPrize) {
-    return <PlayRecorder store={selectedStore} prize={selectedPrize} onBack={() => setScreen('prizes')} />
+    return <PlayRecorder store={selectedStore} prize={selectedPrize} onBack={() => setScreen(playOrigin)} />
   }
 
   if (screen === 'visit-detail' && selectedVisit) {
-    return <VisitDetail visit={selectedVisit} onBack={() => setScreen(detailOrigin)} />
+    return <VisitDetail visit={selectedVisit} onBack={() => setScreen(detailOrigin)} onOpenPrize={(id)=>{setSelectedVisitPrizeId(id);setScreen('prize-detail')}} />
   }
+
+  if(screen==='prize-detail'&&selectedVisit&&selectedVisitPrizeId)return <PrizeVisitDetail visit={selectedVisit} prizeId={selectedVisitPrizeId} onBack={()=>setScreen('visit-detail')} onAdd={(prize)=>{const store=stores.find(item=>item.id===selectedVisit.storeId);if(!store)return;setSelectedStore(store);setSelectedPrize(prize);setPlayOrigin('prize-detail');setScreen('play')}} />
 
   if (screen === 'history-list') return <HistoryList onBack={() => setScreen('home')} onOpen={(visit) => { setSelectedVisit(visit); setDetailOrigin('history-list'); setScreen('visit-detail') }} />
 
   if (screen === 'prizes' && selectedStore) {
-    return <PrizeManager store={selectedStore} onBack={() => setScreen('select-store')} onSelectPrize={(prize) => { setSelectedPrize(prize); setScreen('play') }} />
+    return <PrizeManager store={selectedStore} onBack={() => setScreen('select-store')} onSelectPrize={(prize) => { setSelectedPrize(prize); setPlayOrigin('prizes'); setScreen('play') }} />
   }
 
   if (screen === 'select-store') {
