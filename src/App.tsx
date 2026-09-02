@@ -4,6 +4,7 @@ import { storeService } from './services/storeService'
 import { PrizeManager } from './components/PrizeManager'
 import { PlayRecorder } from './components/PlayRecorder'
 import type { Prize } from './models/prize'
+import { HomeHistory } from './components/HomeHistory'
 import './App.css'
 
 type Screen = 'home' | 'stores' | 'select-store' | 'prizes' | 'play'
@@ -206,12 +207,7 @@ function App() {
         </button>
       </header>
       <main className="app-main">
-        <section className="empty-history" aria-labelledby="empty-title">
-          <div className="machine-illustration" aria-hidden="true"><svg viewBox="0 0 120 120"><rect x="23" y="12" width="74" height="96" rx="15" /><path d="M23 74h74M37 74v34M83 74v34" /><path d="M60 27v18m-12-9h24" /><path d="M50 45c0 8 4 13 10 13s10-5 10-13" /><circle cx="45" cy="89" r="5" /><path d="M61 90h21" /></svg></div>
-          <p className="empty-kicker">最初のプレイを記録しましょう</p><h2 id="empty-title">まだプレイ記録がありません</h2>
-          <p className="empty-description">店舗と景品を登録すると、使用金額や損益をここですぐに確認できます。</p>
-          <button className="primary-button" type="button" onClick={openPlay}><span aria-hidden="true">＋</span>最初の記録を追加</button>
-        </section>
+        <HomeHistory onStart={openPlay} />
         {pendingFeature && <p className="status-message" role="status">{pendingFeature === 'memory' ? 'うろ覚え記入は後のステップで追加します。' : '履歴一覧は記録機能の追加後に利用できます。'}</p>}
       </main>
       <nav className="bottom-actions" aria-label="主な操作">

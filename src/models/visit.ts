@@ -1,0 +1,1 @@
+export interface VisitSummary { id:string; storeId:string; storeName:string; playDate:string; startedAt:string; totalSpent:number; estimatedPrizeValue:number; profit:number; acquiredCount:number; playCount:number }
