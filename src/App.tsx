@@ -7,9 +7,10 @@ import type { Prize } from './models/prize'
 import { HomeHistory } from './components/HomeHistory'
 import { VisitDetail } from './components/VisitDetail'
 import type { VisitSummary } from './models/visit'
+import { HistoryList } from './components/HistoryList'
 import './App.css'
 
-type Screen = 'home' | 'stores' | 'select-store' | 'prizes' | 'play' | 'visit-detail'
+type Screen = 'home' | 'stores' | 'select-store' | 'prizes' | 'play' | 'visit-detail' | 'history-list'
 type PendingFeature = 'memory' | 'history' | null
 
 const getErrorMessage = (error: unknown) =>
@@ -21,6 +22,7 @@ function App() {
   const [selectedStore, setSelectedStore] = useState<Store | null>(null)
   const [selectedPrize, setSelectedPrize] = useState<Prize | null>(null)
   const [selectedVisit, setSelectedVisit] = useState<VisitSummary | null>(null)
+  const [detailOrigin, setDetailOrigin] = useState<'home'|'history-list'>('home')
   const [storeName, setStoreName] = useState('')
   const [editingStore, setEditingStore] = useState<Store | null>(null)
   const [pendingFeature, setPendingFeature] = useState<PendingFeature>(null)
@@ -130,8 +132,10 @@ function App() {
   }
 
   if (screen === 'visit-detail' && selectedVisit) {
-    return <VisitDetail visit={selectedVisit} onBack={() => setScreen('home')} />
+    return <VisitDetail visit={selectedVisit} onBack={() => setScreen(detailOrigin)} />
   }
+
+  if (screen === 'history-list') return <HistoryList onBack={() => setScreen('home')} onOpen={(visit) => { setSelectedVisit(visit); setDetailOrigin('history-list'); setScreen('visit-detail') }} />
 
   if (screen === 'prizes' && selectedStore) {
     return <PrizeManager store={selectedStore} onBack={() => setScreen('select-store')} onSelectPrize={(prize) => { setSelectedPrize(prize); setScreen('play') }} />
@@ -214,13 +218,13 @@ function App() {
         </button>
       </header>
       <main className="app-main">
-        <HomeHistory onStart={openPlay} onOpen={(visit) => { setSelectedVisit(visit); setScreen('visit-detail') }} />
+        <HomeHistory onStart={openPlay} onOpen={(visit) => { setSelectedVisit(visit); setDetailOrigin('home'); setScreen('visit-detail') }} />
         {pendingFeature && <p className="status-message" role="status">{pendingFeature === 'memory' ? 'うろ覚え記入は後のステップで追加します。' : '履歴一覧は記録機能の追加後に利用できます。'}</p>}
       </main>
       <nav className="bottom-actions" aria-label="主な操作">
         <button type="button" onClick={openPlay}><span className="action-icon" aria-hidden="true">＋</span><span>プレイを記録</span></button>
         <button type="button" onClick={() => showPendingMessage('memory')}><span className="action-icon" aria-hidden="true">≒</span><span>うろ覚え記入</span></button>
-        <button type="button" onClick={() => showPendingMessage('history')}><span className="action-icon" aria-hidden="true">☷</span><span>履歴一覧</span></button>
+        <button type="button" onClick={() => setScreen('history-list')}><span className="action-icon" aria-hidden="true">☷</span><span>履歴一覧</span></button>
       </nav>
     </div>
   )
