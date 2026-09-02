@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import type { Store } from './models/store'
 import { storeService } from './services/storeService'
+import { PrizeManager } from './components/PrizeManager'
 import './App.css'
 
-type Screen = 'home' | 'stores'
+type Screen = 'home' | 'stores' | 'select-store' | 'prizes'
 type PendingFeature = 'memory' | 'history' | null
 
 const getErrorMessage = (error: unknown) =>
@@ -12,6 +13,7 @@ const getErrorMessage = (error: unknown) =>
 function App() {
   const [screen, setScreen] = useState<Screen>('home')
   const [stores, setStores] = useState<Store[]>([])
+  const [selectedStore, setSelectedStore] = useState<Store | null>(null)
   const [storeName, setStoreName] = useState('')
   const [editingStore, setEditingStore] = useState<Store | null>(null)
   const [pendingFeature, setPendingFeature] = useState<PendingFeature>(null)
@@ -56,6 +58,13 @@ function App() {
     setMessage('')
     setError('')
     setScreen('stores')
+  }
+
+  const openPlay = () => {
+    setPendingFeature(null)
+    setMessage('')
+    setError('')
+    setScreen(stores.length === 0 ? 'stores' : 'select-store')
   }
 
   const showPendingMessage = (feature: Exclude<PendingFeature, null>) => {
@@ -107,6 +116,25 @@ function App() {
     } catch (deleteError) {
       setError(getErrorMessage(deleteError))
     }
+  }
+
+  if (screen === 'prizes' && selectedStore) {
+    return <PrizeManager store={selectedStore} onBack={() => setScreen('select-store')} />
+  }
+
+  if (screen === 'select-store') {
+    return (
+      <div className="app-shell">
+        <header className="page-header"><button className="back-button" type="button" onClick={() => setScreen('home')}>‹</button><div><p className="app-eyebrow">START PLAY</p><h1>店舗を選択</h1></div></header>
+        <main className="store-main">
+          <p className="step-description">今回プレイする店舗を選んでください。</p>
+          <ul className="selection-list">
+            {stores.map((store) => <li key={store.id}><button type="button" onClick={() => { setSelectedStore(store); setScreen('prizes') }}><span className="store-avatar" aria-hidden="true">店</span><strong>{store.name}</strong><span aria-hidden="true">›</span></button></li>)}
+          </ul>
+          <button className="secondary-wide-button" type="button" onClick={openStores}>店舗を追加・編集</button>
+        </main>
+      </div>
+    )
   }
 
   if (screen === 'stores') {
@@ -175,12 +203,12 @@ function App() {
           <div className="machine-illustration" aria-hidden="true"><svg viewBox="0 0 120 120"><rect x="23" y="12" width="74" height="96" rx="15" /><path d="M23 74h74M37 74v34M83 74v34" /><path d="M60 27v18m-12-9h24" /><path d="M50 45c0 8 4 13 10 13s10-5 10-13" /><circle cx="45" cy="89" r="5" /><path d="M61 90h21" /></svg></div>
           <p className="empty-kicker">最初のプレイを記録しましょう</p><h2 id="empty-title">まだプレイ記録がありません</h2>
           <p className="empty-description">店舗と景品を登録すると、使用金額や損益をここですぐに確認できます。</p>
-          <button className="primary-button" type="button" onClick={openStores}><span aria-hidden="true">＋</span>最初の記録を追加</button>
+          <button className="primary-button" type="button" onClick={openPlay}><span aria-hidden="true">＋</span>最初の記録を追加</button>
         </section>
         {pendingFeature && <p className="status-message" role="status">{pendingFeature === 'memory' ? 'うろ覚え記入は後のステップで追加します。' : '履歴一覧は記録機能の追加後に利用できます。'}</p>}
       </main>
       <nav className="bottom-actions" aria-label="主な操作">
-        <button type="button" onClick={openStores}><span className="action-icon" aria-hidden="true">＋</span><span>プレイを記録</span></button>
+        <button type="button" onClick={openPlay}><span className="action-icon" aria-hidden="true">＋</span><span>プレイを記録</span></button>
         <button type="button" onClick={() => showPendingMessage('memory')}><span className="action-icon" aria-hidden="true">≒</span><span>うろ覚え記入</span></button>
         <button type="button" onClick={() => showPendingMessage('history')}><span className="action-icon" aria-hidden="true">☷</span><span>履歴一覧</span></button>
       </nav>
