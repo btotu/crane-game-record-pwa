@@ -3,10 +3,10 @@ import type { Store } from '../models/store'
 import { prizeCategories, type Prize, type PrizeCategory } from '../models/prize'
 import { prizeService } from '../services/prizeService'
 
-interface Props { store: Store; onBack: () => void }
+interface Props { store: Store; onBack: () => void; onSelectPrize: (prize: Prize) => void }
 const errorText = (error: unknown) => error instanceof Error ? error.message : '処理に失敗しました。'
 
-export function PrizeManager({ store, onBack }: Props) {
+export function PrizeManager({ store, onBack, onSelectPrize }: Props) {
   const [prizes, setPrizes] = useState<Prize[]>([])
   const [name, setName] = useState('')
   const [category, setCategory] = useState<PrizeCategory>('食品')
@@ -43,7 +43,7 @@ export function PrizeManager({ store, onBack }: Props) {
       </section>
       {error && <p className="feedback error-message" role="alert">{error}</p>}{feedback && <p className="feedback success-message" role="status">{feedback}</p>}
       <section className="store-list-section"><div className="list-heading"><div><h2>登録済み景品</h2><p>すべての店舗で再利用できます</p></div><span>{prizes.length}件</span></div>
-        {prizes.length === 0 ? <p className="list-empty">登録済みの景品はありません。</p> : <ul className="prize-list">{prizes.map(prize => <li key={prize.id}><div className="prize-info"><strong>{prize.name}</strong><span>{prize.category}・参考価格 {prize.estimatedPrice.toLocaleString()}円</span></div><div className="store-actions"><button type="button" onClick={() => startEdit(prize)}>編集</button><button className="delete-button" type="button" onClick={() => void remove(prize)}>削除</button></div></li>)}</ul>}
+        {prizes.length === 0 ? <p className="list-empty">登録済みの景品はありません。</p> : <ul className="prize-list">{prizes.map(prize => <li key={prize.id}><button className="prize-select" type="button" onClick={()=>onSelectPrize(prize)}><div className="prize-info"><strong>{prize.name}</strong><span>{prize.category}・参考価格 {prize.estimatedPrice.toLocaleString()}円</span></div><span aria-hidden="true">›</span></button><div className="store-actions"><button type="button" onClick={() => startEdit(prize)}>編集</button><button className="delete-button" type="button" onClick={() => void remove(prize)}>削除</button></div></li>)}</ul>}
       </section>
     </main>
   </div>

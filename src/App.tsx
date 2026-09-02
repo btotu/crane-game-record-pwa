@@ -2,9 +2,11 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import type { Store } from './models/store'
 import { storeService } from './services/storeService'
 import { PrizeManager } from './components/PrizeManager'
+import { PlayRecorder } from './components/PlayRecorder'
+import type { Prize } from './models/prize'
 import './App.css'
 
-type Screen = 'home' | 'stores' | 'select-store' | 'prizes'
+type Screen = 'home' | 'stores' | 'select-store' | 'prizes' | 'play'
 type PendingFeature = 'memory' | 'history' | null
 
 const getErrorMessage = (error: unknown) =>
@@ -14,6 +16,7 @@ function App() {
   const [screen, setScreen] = useState<Screen>('home')
   const [stores, setStores] = useState<Store[]>([])
   const [selectedStore, setSelectedStore] = useState<Store | null>(null)
+  const [selectedPrize, setSelectedPrize] = useState<Prize | null>(null)
   const [storeName, setStoreName] = useState('')
   const [editingStore, setEditingStore] = useState<Store | null>(null)
   const [pendingFeature, setPendingFeature] = useState<PendingFeature>(null)
@@ -118,8 +121,12 @@ function App() {
     }
   }
 
+  if (screen === 'play' && selectedStore && selectedPrize) {
+    return <PlayRecorder store={selectedStore} prize={selectedPrize} onBack={() => setScreen('prizes')} />
+  }
+
   if (screen === 'prizes' && selectedStore) {
-    return <PrizeManager store={selectedStore} onBack={() => setScreen('select-store')} />
+    return <PrizeManager store={selectedStore} onBack={() => setScreen('select-store')} onSelectPrize={(prize) => { setSelectedPrize(prize); setScreen('play') }} />
   }
 
   if (screen === 'select-store') {
