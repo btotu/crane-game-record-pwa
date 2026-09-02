@@ -1,1 +1,2 @@
 export interface VisitSummary { id:string; storeId:string; storeName:string; playDate:string; startedAt:string; totalSpent:number; estimatedPrizeValue:number; profit:number; acquiredCount:number; playCount:number }
+export interface VisitPlayDetail { id:string; prizeId:string; prizeName:string; category:string; amount:number; result:'獲得'|'撤退'|'アシスト獲得'; startedAt:string; estimatedValue:number }

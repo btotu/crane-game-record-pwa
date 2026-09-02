@@ -1,4 +1,4 @@
-import type { VisitSummary } from '../models/visit'
+import type { VisitPlayDetail, VisitSummary } from '../models/visit'
 import { playRepository } from '../repositories/playRepository'
 import { prizeService } from './prizeService'
 import { storeService } from './storeService'
@@ -10,4 +10,4 @@ export const visitService = { async list():Promise<VisitSummary[]> {
     if(current){current.totalSpent+=play.amount;current.estimatedPrizeValue+=value;current.profit=current.estimatedPrizeValue-current.totalSpent;current.acquiredCount+=won?1:0;current.playCount+=1;if(play.startedAt<current.startedAt)current.startedAt=play.startedAt}
     else grouped.set(key,{id:key,storeId:play.storeId,storeName:storeMap.get(play.storeId)?.name??'削除済み店舗',playDate:play.playDate,startedAt:play.startedAt,totalSpent:play.amount,estimatedPrizeValue:value,profit:value-play.amount,acquiredCount:won?1:0,playCount:1}) }
   return [...grouped.values()].sort((a,b)=>b.startedAt.localeCompare(a.startedAt))
-} }
+}, async details(storeId:string,playDate:string):Promise<VisitPlayDetail[]>{const [plays,prizes]=await Promise.all([playRepository.forVisit(storeId,playDate),prizeService.list()]);const map=new Map(prizes.map(item=>[item.id,item]));return plays.map(play=>{const prize=map.get(play.prizeId);return{id:play.id,prizeId:play.prizeId,prizeName:prize?.name??'削除済み景品',category:prize?.category??'その他',amount:play.amount,result:play.result,startedAt:play.startedAt,estimatedValue:play.result==='撤退'?0:(prize?.estimatedPrice??0)}})} }

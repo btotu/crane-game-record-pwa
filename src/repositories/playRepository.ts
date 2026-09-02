@@ -11,4 +11,5 @@ export const playRepository = {
     return record
   },
   forToday: (storeId:string, prizeId:string, playDate:string) => database.plays.where('[storeId+prizeId+playDate]').equals([storeId, prizeId, playDate]).sortBy('startedAt'),
+  forVisit: (storeId:string, playDate:string) => database.plays.where('[storeId+playDate]').equals([storeId, playDate]).sortBy('startedAt'),
 }

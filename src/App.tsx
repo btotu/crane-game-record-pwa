@@ -5,9 +5,11 @@ import { PrizeManager } from './components/PrizeManager'
 import { PlayRecorder } from './components/PlayRecorder'
 import type { Prize } from './models/prize'
 import { HomeHistory } from './components/HomeHistory'
+import { VisitDetail } from './components/VisitDetail'
+import type { VisitSummary } from './models/visit'
 import './App.css'
 
-type Screen = 'home' | 'stores' | 'select-store' | 'prizes' | 'play'
+type Screen = 'home' | 'stores' | 'select-store' | 'prizes' | 'play' | 'visit-detail'
 type PendingFeature = 'memory' | 'history' | null
 
 const getErrorMessage = (error: unknown) =>
@@ -18,6 +20,7 @@ function App() {
   const [stores, setStores] = useState<Store[]>([])
   const [selectedStore, setSelectedStore] = useState<Store | null>(null)
   const [selectedPrize, setSelectedPrize] = useState<Prize | null>(null)
+  const [selectedVisit, setSelectedVisit] = useState<VisitSummary | null>(null)
   const [storeName, setStoreName] = useState('')
   const [editingStore, setEditingStore] = useState<Store | null>(null)
   const [pendingFeature, setPendingFeature] = useState<PendingFeature>(null)
@@ -126,6 +129,10 @@ function App() {
     return <PlayRecorder store={selectedStore} prize={selectedPrize} onBack={() => setScreen('prizes')} />
   }
 
+  if (screen === 'visit-detail' && selectedVisit) {
+    return <VisitDetail visit={selectedVisit} onBack={() => setScreen('home')} />
+  }
+
   if (screen === 'prizes' && selectedStore) {
     return <PrizeManager store={selectedStore} onBack={() => setScreen('select-store')} onSelectPrize={(prize) => { setSelectedPrize(prize); setScreen('play') }} />
   }
@@ -207,7 +214,7 @@ function App() {
         </button>
       </header>
       <main className="app-main">
-        <HomeHistory onStart={openPlay} />
+        <HomeHistory onStart={openPlay} onOpen={(visit) => { setSelectedVisit(visit); setScreen('visit-detail') }} />
         {pendingFeature && <p className="status-message" role="status">{pendingFeature === 'memory' ? 'うろ覚え記入は後のステップで追加します。' : '履歴一覧は記録機能の追加後に利用できます。'}</p>}
       </main>
       <nav className="bottom-actions" aria-label="主な操作">
