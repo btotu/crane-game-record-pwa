@@ -8,6 +8,7 @@ export interface Prize {
   estimatedPrice: number
   priceSource: 'user'
   userEditedPrice: boolean
+  imageDataUrl?: string
   createdAt: string
   updatedAt: string
 }
@@ -16,4 +17,5 @@ export interface PrizeInput {
   name: string
   category: PrizeCategory
   estimatedPrice: number
+  imageDataUrl?: string | null
 }

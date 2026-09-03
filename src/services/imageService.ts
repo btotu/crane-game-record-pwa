@@ -16,8 +16,7 @@ const loadImage = (file: File): Promise<HTMLImageElement> => new Promise((resolv
   image.src = url
 })
 
-export const imageService = {
-  async compressStoreImage(file: File): Promise<string> {
+const compressImage = async (file: File): Promise<string> => {
     if (!file.type.startsWith('image/')) throw new Error('画像ファイルを選択してください。')
     if (file.size > MAX_FILE_BYTES) throw new Error('画像は20MB以下のものを選択してください。')
 
@@ -30,5 +29,9 @@ export const imageService = {
     if (!context) throw new Error('画像を処理できませんでした。')
     context.drawImage(image, 0, 0, canvas.width, canvas.height)
     return canvas.toDataURL('image/jpeg', 0.78)
-  },
+}
+
+export const imageService = {
+  compressStoreImage: compressImage,
+  compressPrizeImage: compressImage,
 }
