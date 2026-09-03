@@ -9,9 +9,10 @@ import { VisitDetail } from './components/VisitDetail'
 import type { VisitSummary } from './models/visit'
 import { HistoryList } from './components/HistoryList'
 import { PrizeVisitDetail } from './components/PrizeVisitDetail'
+import { StoreStats } from './components/StoreStats'
 import './App.css'
 
-type Screen = 'home' | 'stores' | 'select-store' | 'prizes' | 'play' | 'visit-detail' | 'history-list' | 'prize-detail'
+type Screen = 'home' | 'stores' | 'select-store' | 'prizes' | 'play' | 'visit-detail' | 'history-list' | 'prize-detail' | 'store-stats'
 type PendingFeature = 'memory' | 'history' | null
 
 const getErrorMessage = (error: unknown) =>
@@ -141,6 +142,7 @@ function App() {
   if(screen==='prize-detail'&&selectedVisit&&selectedVisitPrizeId)return <PrizeVisitDetail visit={selectedVisit} prizeId={selectedVisitPrizeId} onBack={()=>setScreen('visit-detail')} onAdd={(prize)=>{const store=stores.find(item=>item.id===selectedVisit.storeId);if(!store)return;setSelectedStore(store);setSelectedPrize(prize);setPlayOrigin('prize-detail');setScreen('play')}} />
 
   if (screen === 'history-list') return <HistoryList onBack={() => setScreen('home')} onOpen={(visit) => { setSelectedVisit(visit); setDetailOrigin('history-list'); setScreen('visit-detail') }} />
+  if (screen === 'store-stats') return <StoreStats onBack={() => setScreen('home')} />
 
   if (screen === 'prizes' && selectedStore) {
     return <PrizeManager store={selectedStore} onBack={() => setScreen('select-store')} onSelectPrize={(prize) => { setSelectedPrize(prize); setPlayOrigin('prizes'); setScreen('play') }} />
@@ -230,6 +232,7 @@ function App() {
         <button type="button" onClick={openPlay}><span className="action-icon" aria-hidden="true">＋</span><span>プレイを記録</span></button>
         <button type="button" onClick={() => showPendingMessage('memory')}><span className="action-icon" aria-hidden="true">≒</span><span>うろ覚え記入</span></button>
         <button type="button" onClick={() => setScreen('history-list')}><span className="action-icon" aria-hidden="true">☷</span><span>履歴一覧</span></button>
+        <button type="button" onClick={() => setScreen('store-stats')}><span className="action-icon" aria-hidden="true">▥</span><span>店舗戦績</span></button>
       </nav>
     </div>
   )
