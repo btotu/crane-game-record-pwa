@@ -10,10 +10,10 @@ import type { VisitSummary } from './models/visit'
 import { HistoryList } from './components/HistoryList'
 import { PrizeVisitDetail } from './components/PrizeVisitDetail'
 import { StoreStats } from './components/StoreStats'
+import { ApproximateEntry } from './components/ApproximateEntry'
 import './App.css'
 
-type Screen = 'home' | 'stores' | 'select-store' | 'prizes' | 'play' | 'visit-detail' | 'history-list' | 'prize-detail' | 'store-stats'
-type PendingFeature = 'memory' | 'history' | null
+type Screen = 'home' | 'stores' | 'select-store' | 'prizes' | 'play' | 'visit-detail' | 'history-list' | 'prize-detail' | 'store-stats' | 'approximate'
 
 const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : '処理中に問題が発生しました。'
@@ -29,7 +29,6 @@ function App() {
   const [playOrigin,setPlayOrigin]=useState<'prizes'|'prize-detail'>('prizes')
   const [storeName, setStoreName] = useState('')
   const [editingStore, setEditingStore] = useState<Store | null>(null)
-  const [pendingFeature, setPendingFeature] = useState<PendingFeature>(null)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(true)
@@ -67,22 +66,15 @@ function App() {
   }, [])
 
   const openStores = () => {
-    setPendingFeature(null)
     setMessage('')
     setError('')
     setScreen('stores')
   }
 
   const openPlay = () => {
-    setPendingFeature(null)
     setMessage('')
     setError('')
     setScreen(stores.length === 0 ? 'stores' : 'select-store')
-  }
-
-  const showPendingMessage = (feature: Exclude<PendingFeature, null>) => {
-    setPendingFeature(feature)
-    setMessage('')
   }
 
   const resetForm = () => {
@@ -143,6 +135,7 @@ function App() {
 
   if (screen === 'history-list') return <HistoryList onBack={() => setScreen('home')} onOpen={(visit) => { setSelectedVisit(visit); setDetailOrigin('history-list'); setScreen('visit-detail') }} />
   if (screen === 'store-stats') return <StoreStats onBack={() => setScreen('home')} />
+  if (screen === 'approximate') return <ApproximateEntry onBack={() => setScreen('home')} />
 
   if (screen === 'prizes' && selectedStore) {
     return <PrizeManager store={selectedStore} onBack={() => setScreen('select-store')} onSelectPrize={(prize) => { setSelectedPrize(prize); setPlayOrigin('prizes'); setScreen('play') }} />
@@ -226,11 +219,10 @@ function App() {
       </header>
       <main className="app-main">
         <HomeHistory onStart={openPlay} onOpen={(visit) => { setSelectedVisit(visit); setDetailOrigin('home'); setScreen('visit-detail') }} />
-        {pendingFeature && <p className="status-message" role="status">{pendingFeature === 'memory' ? 'うろ覚え記入は後のステップで追加します。' : '履歴一覧は記録機能の追加後に利用できます。'}</p>}
       </main>
       <nav className="bottom-actions" aria-label="主な操作">
         <button type="button" onClick={openPlay}><span className="action-icon" aria-hidden="true">＋</span><span>プレイを記録</span></button>
-        <button type="button" onClick={() => showPendingMessage('memory')}><span className="action-icon" aria-hidden="true">≒</span><span>うろ覚え記入</span></button>
+        <button type="button" onClick={() => setScreen('approximate')}><span className="action-icon" aria-hidden="true">≒</span><span>うろ覚え記入</span></button>
         <button type="button" onClick={() => setScreen('history-list')}><span className="action-icon" aria-hidden="true">☷</span><span>履歴一覧</span></button>
         <button type="button" onClick={() => setScreen('store-stats')}><span className="action-icon" aria-hidden="true">▥</span><span>店舗戦績</span></button>
       </nav>
