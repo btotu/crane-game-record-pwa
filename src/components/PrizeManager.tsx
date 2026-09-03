@@ -3,6 +3,7 @@ import type { Store } from '../models/store'
 import { prizeCategories, type Prize, type PrizeCategory } from '../models/prize'
 import { prizeService } from '../services/prizeService'
 import { imageService } from '../services/imageService'
+import { todayKey } from '../services/playService'
 
 const BarcodeScanner = lazy(() => import('./BarcodeScanner').then(module => ({ default: module.BarcodeScanner })))
 
@@ -21,19 +22,22 @@ export function PrizeManager({ store, onBack, onSelectPrize }: Props) {
   const [isProcessingImage, setIsProcessingImage] = useState(false)
   const [janCode, setJanCode] = useState('')
   const [scannerOpen, setScannerOpen] = useState(false)
+  const [referenceName, setReferenceName] = useState('')
+  const [referenceUrl, setReferenceUrl] = useState('')
+  const [priceCheckedAt, setPriceCheckedAt] = useState(todayKey())
 
   const reload = async () => setPrizes(await prizeService.list())
   useEffect(() => { void prizeService.list().then(setPrizes).catch((e: unknown) => setError(errorText(e))) }, [])
-  const reset = () => { setName(''); setCategory('食品'); setPrice(''); setEditing(null); setImageDataUrl(null); setJanCode('') }
+  const reset = () => { setName(''); setCategory('食品'); setPrice(''); setEditing(null); setImageDataUrl(null); setJanCode(''); setReferenceName(''); setReferenceUrl(''); setPriceCheckedAt(todayKey()) }
   const submit = async (event: FormEvent) => {
     event.preventDefault(); setError('')
     try {
-      const input = { name, category, estimatedPrice: Number(price || 0), imageDataUrl, janCode }
+      const input = { name, category, estimatedPrice: Number(price || 0), imageDataUrl, janCode, priceReferenceName: referenceName, priceReferenceUrl: referenceUrl, priceCheckedAt }
       if (editing) await prizeService.update(editing.id, input); else await prizeService.create(input)
       setFeedback(editing ? '景品を変更しました。' : '景品を登録しました。'); reset(); await reload()
     } catch (e) { setError(errorText(e)) }
   }
-  const startEdit = (prize: Prize) => { setEditing(prize); setName(prize.name); setCategory(prize.category); setPrice(String(prize.estimatedPrice)); setImageDataUrl(prize.imageDataUrl ?? null); setJanCode(prize.janCode ?? ''); setFeedback('') }
+  const startEdit = (prize: Prize) => { setEditing(prize); setName(prize.name); setCategory(prize.category); setPrice(String(prize.estimatedPrice)); setImageDataUrl(prize.imageDataUrl ?? null); setJanCode(prize.janCode ?? ''); setReferenceName(prize.priceReferenceName ?? ''); setReferenceUrl(prize.priceReferenceUrl ?? ''); setPriceCheckedAt(prize.priceCheckedAt ?? todayKey()); setFeedback('') }
   const remove = async (prize: Prize) => { if (!confirm(`「${prize.name}」を削除しますか？`)) return; await prizeService.remove(prize.id); if (editing?.id === prize.id) reset(); setFeedback('景品を削除しました。'); await reload() }
   const selectImage = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]; event.target.value = ''; if (!file) return
@@ -61,12 +65,13 @@ export function PrizeManager({ store, onBack, onSelectPrize }: Props) {
           <label htmlFor="jan-code">JANコード（任意）</label><div className="barcode-input-row"><input id="jan-code" type="text" inputMode="numeric" value={janCode} onChange={e => setJanCode(e.target.value.replace(/\D/g, '').slice(0, 13))} placeholder="8桁または13桁" /><button type="button" onClick={() => setScannerOpen(true)}>カメラで読取</button></div>
           <div className="form-row"><div><label htmlFor="category">カテゴリ</label><select id="category" value={category} onChange={e => setCategory(e.target.value as PrizeCategory)}>{prizeCategories.map(item => <option key={item}>{item}</option>)}</select></div>
           <div><label htmlFor="price">参考価格（円）</label><input id="price" type="number" inputMode="numeric" min="0" max="1000000" step="1" value={price} onChange={e => setPrice(e.target.value)} placeholder="0" /></div></div>
+          <fieldset className="price-reference-fields"><legend>価格の参考情報（任意）</legend><label htmlFor="reference-name">参考サイト・店舗名</label><input id="reference-name" value={referenceName} onChange={e => setReferenceName(e.target.value)} maxLength={80} placeholder="例：メーカー希望小売価格、○○ストア" /><label htmlFor="reference-url">参考URL</label><input id="reference-url" type="url" inputMode="url" value={referenceUrl} onChange={e => setReferenceUrl(e.target.value)} placeholder="https://..." /><label htmlFor="price-checked-at">価格確認日</label><input id="price-checked-at" type="date" max={todayKey()} value={priceCheckedAt} onChange={e => setPriceCheckedAt(e.target.value)} /></fieldset>
           <div className="form-actions">{editing && <button className="secondary-button" type="button" onClick={reset}>キャンセル</button>}<button className="save-button" type="submit" disabled={isProcessingImage}>{editing ? '変更を保存' : '景品を登録'}</button></div>
         </form>
       </section>
       {error && <p className="feedback error-message" role="alert">{error}</p>}{feedback && <p className="feedback success-message" role="status">{feedback}</p>}
       <section className="store-list-section"><div className="list-heading"><div><h2>登録済み景品</h2><p>すべての店舗で再利用できます</p></div><span>{prizes.length}件</span></div>
-        {prizes.length === 0 ? <p className="list-empty">登録済みの景品はありません。</p> : <ul className="prize-list">{prizes.map(prize => <li key={prize.id}><button className="prize-select" type="button" onClick={()=>onSelectPrize(prize)}>{prize.imageDataUrl ? <img className="prize-list-photo" src={prize.imageDataUrl} alt="" /> : <div className="prize-photo-placeholder" aria-hidden="true">景</div>}<div className="prize-info"><strong>{prize.name}</strong><span>{prize.category}・参考価格 {prize.estimatedPrice.toLocaleString()}円</span></div><span aria-hidden="true">›</span></button><div className="store-actions"><button type="button" onClick={() => startEdit(prize)}>編集</button><button className="delete-button" type="button" onClick={() => void remove(prize)}>削除</button></div></li>)}</ul>}
+        {prizes.length === 0 ? <p className="list-empty">登録済みの景品はありません。</p> : <ul className="prize-list">{prizes.map(prize => <li key={prize.id}><button className="prize-select" type="button" onClick={()=>onSelectPrize(prize)}>{prize.imageDataUrl ? <img className="prize-list-photo" src={prize.imageDataUrl} alt="" /> : <div className="prize-photo-placeholder" aria-hidden="true">景</div>}<div className="prize-info"><strong>{prize.name}</strong><span>{prize.category}・参考価格 {prize.estimatedPrice.toLocaleString()}円{prize.priceReferenceName ? `・${prize.priceReferenceName}` : ''}</span></div><span aria-hidden="true">›</span></button><div className="store-actions"><button type="button" onClick={() => startEdit(prize)}>編集</button><button className="delete-button" type="button" onClick={() => void remove(prize)}>削除</button></div></li>)}</ul>}
       </section>
     </main>
     {scannerOpen && <Suspense fallback={<div className="scanner-overlay"><div className="scanner-panel"><p className="list-empty">読取機能を準備しています…</p></div></div>}><BarcodeScanner onDetected={barcodeDetected} onClose={() => setScannerOpen(false)} /></Suspense>}

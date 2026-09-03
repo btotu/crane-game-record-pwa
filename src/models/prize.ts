@@ -10,6 +10,9 @@ export interface Prize {
   userEditedPrice: boolean
   imageDataUrl?: string
   janCode?: string
+  priceReferenceName?: string
+  priceReferenceUrl?: string
+  priceCheckedAt?: string
   createdAt: string
   updatedAt: string
 }
@@ -20,4 +23,7 @@ export interface PrizeInput {
   estimatedPrice: number
   imageDataUrl?: string | null
   janCode?: string
+  priceReferenceName?: string
+  priceReferenceUrl?: string
+  priceCheckedAt?: string
 }
