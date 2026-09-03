@@ -20,6 +20,7 @@ export const storeRepository = {
       registrationSource: input.latitude != null && input.longitude != null ? 'location' : 'manual',
       imageSource: input.imageDataUrl ? 'user' : 'placeholder',
       imageDataUrl: input.imageDataUrl ?? undefined,
+      externalStoreId: input.externalStoreId,
     }
 
     await database.stores.add(store)

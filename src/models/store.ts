@@ -19,4 +19,5 @@ export interface StoreInput {
   latitude?: number | null
   longitude?: number | null
   imageDataUrl?: string | null
+  externalStoreId?: string
 }

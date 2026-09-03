@@ -15,6 +15,7 @@ import { BackupSettings } from './components/BackupSettings'
 import { SettingsMenu } from './components/SettingsMenu'
 import { locationService, type CurrentPosition } from './services/locationService'
 import { imageService } from './services/imageService'
+import { nearbyStoreService, type NearbyStoreCandidate } from './services/nearbyStoreService'
 import './App.css'
 
 type Screen = 'home' | 'stores' | 'select-store' | 'prizes' | 'play' | 'visit-detail' | 'history-list' | 'prize-detail' | 'store-stats' | 'approximate' | 'settings' | 'backup'
@@ -43,6 +44,8 @@ function App() {
   const [isLocating, setIsLocating] = useState(false)
   const [storeImageDataUrl, setStoreImageDataUrl] = useState<string | null>(null)
   const [isProcessingImage, setIsProcessingImage] = useState(false)
+  const [nearbyCandidates, setNearbyCandidates] = useState<NearbyStoreCandidate[]>([])
+  const [isSearchingNearby, setIsSearchingNearby] = useState(false)
 
   const loadStores = useCallback(async () => {
     try {
@@ -171,6 +174,41 @@ function App() {
     return a.distance - b.distance
   })
 
+  const searchNearbyStores = async () => {
+    try {
+      setIsSearchingNearby(true)
+      setError('')
+      const position = await locationService.getCurrent()
+      setCurrentPosition(position)
+      const candidates = await nearbyStoreService.search(position)
+      const registeredExternalIds = new Set(stores.map(store => store.externalStoreId).filter(Boolean))
+      const registeredNames = new Set(stores.map(store => store.name.trim().toLocaleLowerCase('ja-JP')))
+      const unregistered = candidates.filter(candidate => !registeredExternalIds.has(candidate.externalStoreId) && !registeredNames.has(candidate.name.trim().toLocaleLowerCase('ja-JP')))
+      setNearbyCandidates(unregistered)
+      setMessage(unregistered.length === 0 ? '周辺5kmに未登録の店舗候補は見つかりませんでした。必要な店舗は手動で登録できます。' : '')
+    } catch (searchError) {
+      setNearbyCandidates([])
+      setError(getErrorMessage(searchError))
+    } finally {
+      setIsSearchingNearby(false)
+    }
+  }
+
+  const selectNearbyStore = async (candidate: NearbyStoreCandidate) => {
+    try {
+      setIsSaving(true)
+      setError('')
+      const store = await storeService.create({ name: candidate.name, latitude: candidate.latitude, longitude: candidate.longitude, externalStoreId: candidate.externalStoreId })
+      setStores(current => [store, ...current])
+      setSelectedStore(store)
+      setScreen('prizes')
+    } catch (saveError) {
+      setError(getErrorMessage(saveError))
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   const deleteStore = async (store: Store) => {
     if (!window.confirm(`「${store.name}」を削除しますか？`)) return
     try {
@@ -213,9 +251,16 @@ function App() {
           <button className="location-wide-button" type="button" disabled={isLocating} onClick={() => void locate('selection')}>{isLocating ? '現在地を取得中…' : currentPosition ? '現在地を更新' : '現在地から近い店舗を表示'}</button>
           {currentPosition && <p className="location-status">位置情報を保存済みの店舗を、現在地から近い順に表示しています。</p>}
           {error && <p className="feedback error-message" role="alert">{error}</p>}
+          {message && <p className="feedback success-message" role="status">{message}</p>}
+          {stores.length > 0 && <div className="nearby-heading"><strong>登録済み店舗</strong><span>近い順</span></div>}
           <ul className="selection-list">
             {storesWithDistance.map(({store,distance}) => <li key={store.id}><button type="button" onClick={() => { setSelectedStore(store); setScreen('prizes') }}>{store.imageDataUrl ? <img className="store-list-photo" src={store.imageDataUrl} alt="" /> : <span className="store-avatar" aria-hidden="true">店</span>}<strong>{store.name}{distance != null && <small>{distance < 1000 ? `約${Math.round(distance / 10) * 10}m` : `約${(distance / 1000).toFixed(1)}km`}</small>}</strong><span aria-hidden="true">›</span></button></li>)}
           </ul>
+          <section className="nearby-search-section">
+            <button className="nearby-search-button" type="button" disabled={isSearchingNearby} onClick={() => void searchNearbyStores()}>{isSearchingNearby ? '周辺を検索中…' : '周辺5kmの未登録店舗を検索'}</button>
+            {nearbyCandidates.length > 0 && <><div className="nearby-heading"><strong>周辺の店舗候補</strong><span>{nearbyCandidates.length}件</span></div><ul className="nearby-candidate-list">{nearbyCandidates.map(candidate => <li key={candidate.externalStoreId}><div><strong>{candidate.name}</strong><span>{candidate.distanceMeters < 1000 ? `約${Math.round(candidate.distanceMeters / 10) * 10}m` : `約${(candidate.distanceMeters / 1000).toFixed(1)}km`}</span></div><button type="button" disabled={isSaving} onClick={() => void selectNearbyStore(candidate)}>登録して選択</button></li>)}</ul></>}
+            <p className="osm-attribution">候補データ © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap contributors</a></p>
+          </section>
           <button className="secondary-wide-button" type="button" onClick={() => openStores('select-store')}>店舗を追加・編集</button>
         </main>
       </div>
