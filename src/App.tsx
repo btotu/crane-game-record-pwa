@@ -13,6 +13,7 @@ import { StoreStats } from './components/StoreStats'
 import { ApproximateEntry } from './components/ApproximateEntry'
 import { BackupSettings } from './components/BackupSettings'
 import { SettingsMenu } from './components/SettingsMenu'
+import { locationService, type CurrentPosition } from './services/locationService'
 import './App.css'
 
 type Screen = 'home' | 'stores' | 'select-store' | 'prizes' | 'play' | 'visit-detail' | 'history-list' | 'prize-detail' | 'store-stats' | 'approximate' | 'settings' | 'backup'
@@ -36,6 +37,9 @@ function App() {
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [storePosition, setStorePosition] = useState<CurrentPosition | null>(null)
+  const [currentPosition, setCurrentPosition] = useState<CurrentPosition | null>(null)
+  const [isLocating, setIsLocating] = useState(false)
 
   const loadStores = useCallback(async () => {
     try {
@@ -85,6 +89,7 @@ function App() {
   const resetForm = () => {
     setStoreName('')
     setEditingStore(null)
+    setStorePosition(null)
   }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -93,10 +98,10 @@ function App() {
       setIsSaving(true)
       setError('')
       if (editingStore) {
-        await storeService.update(editingStore.id, { name: storeName })
+        await storeService.update(editingStore.id, { name: storeName, latitude: storePosition?.latitude ?? null, longitude: storePosition?.longitude ?? null })
         setMessage('店舗名を変更しました。')
       } else {
-        await storeService.create({ name: storeName })
+        await storeService.create({ name: storeName, latitude: storePosition?.latitude, longitude: storePosition?.longitude })
         setMessage('店舗を登録しました。')
       }
       resetForm()
@@ -111,9 +116,39 @@ function App() {
   const startEditing = (store: Store) => {
     setEditingStore(store)
     setStoreName(store.name)
+    setStorePosition(store.latitude != null && store.longitude != null ? { latitude: store.latitude, longitude: store.longitude, accuracy: 0 } : null)
     setMessage('')
     setError('')
   }
+
+  const locate = async (target: 'store' | 'selection') => {
+    try {
+      setIsLocating(true)
+      setError('')
+      const position = await locationService.getCurrent()
+      if (target === 'store') {
+        setStorePosition(position)
+        setMessage(`現在地を取得しました（精度 約${Math.round(position.accuracy)}m）。店舗を保存すると位置情報も保存されます。`)
+      } else {
+        setCurrentPosition(position)
+      }
+    } catch (locationError) {
+      setError(getErrorMessage(locationError))
+    } finally {
+      setIsLocating(false)
+    }
+  }
+
+  const storesWithDistance = stores.map((store) => ({
+    store,
+    distance: currentPosition && store.latitude != null && store.longitude != null
+      ? locationService.distanceMeters(currentPosition, { latitude: store.latitude, longitude: store.longitude })
+      : null,
+  })).sort((a, b) => {
+    if (a.distance == null) return b.distance == null ? 0 : 1
+    if (b.distance == null) return -1
+    return a.distance - b.distance
+  })
 
   const deleteStore = async (store: Store) => {
     if (!window.confirm(`「${store.name}」を削除しますか？`)) return
@@ -154,8 +189,11 @@ function App() {
         <header className="page-header"><button className="back-button" type="button" onClick={() => setScreen('home')}>‹</button><div><p className="app-eyebrow">START PLAY</p><h1>店舗を選択</h1></div></header>
         <main className="store-main">
           <p className="step-description">今回プレイする店舗を選んでください。</p>
+          <button className="location-wide-button" type="button" disabled={isLocating} onClick={() => void locate('selection')}>{isLocating ? '現在地を取得中…' : currentPosition ? '現在地を更新' : '現在地から近い店舗を表示'}</button>
+          {currentPosition && <p className="location-status">位置情報を保存済みの店舗を、現在地から近い順に表示しています。</p>}
+          {error && <p className="feedback error-message" role="alert">{error}</p>}
           <ul className="selection-list">
-            {stores.map((store) => <li key={store.id}><button type="button" onClick={() => { setSelectedStore(store); setScreen('prizes') }}><span className="store-avatar" aria-hidden="true">店</span><strong>{store.name}</strong><span aria-hidden="true">›</span></button></li>)}
+            {storesWithDistance.map(({store,distance}) => <li key={store.id}><button type="button" onClick={() => { setSelectedStore(store); setScreen('prizes') }}><span className="store-avatar" aria-hidden="true">店</span><strong>{store.name}{distance != null && <small>{distance < 1000 ? `約${Math.round(distance / 10) * 10}m` : `約${(distance / 1000).toFixed(1)}km`}</small>}</strong><span aria-hidden="true">›</span></button></li>)}
           </ul>
           <button className="secondary-wide-button" type="button" onClick={() => openStores('select-store')}>店舗を追加・編集</button>
         </main>
@@ -175,11 +213,16 @@ function App() {
           <section className="form-card" aria-labelledby="store-form-title">
             <div className="section-heading">
               <span className="section-number">01</span>
-              <div><h2 id="store-form-title">{editingStore ? '店舗名を編集' : '新しい店舗を登録'}</h2><p>Phase 1では店舗名を手入力します</p></div>
+              <div><h2 id="store-form-title">{editingStore ? '店舗情報を編集' : '新しい店舗を登録'}</h2><p>店舗名と位置情報を端末に保存します</p></div>
             </div>
             <form onSubmit={handleSubmit}>
               <label htmlFor="store-name">店舗名</label>
               <input id="store-name" name="storeName" type="text" value={storeName} onChange={(event) => setStoreName(event.target.value)} maxLength={80} placeholder="例：GiGO ○○店" autoComplete="off" />
+              <div className="store-location-row">
+                <button type="button" disabled={isLocating} onClick={() => void locate('store')}>{isLocating ? '取得中…' : storePosition ? '現在地を取り直す' : '現在地を店舗位置にする'}</button>
+                {storePosition ? <span>位置情報あり{storePosition.accuracy > 0 ? `・精度 約${Math.round(storePosition.accuracy)}m` : ''}</span> : <span>位置情報なし</span>}
+              </div>
+              {storePosition && <button className="clear-location-button" type="button" onClick={() => setStorePosition(null)}>保存する位置情報を解除</button>}
               <div className="form-actions">
                 {editingStore && <button className="secondary-button" type="button" onClick={resetForm}>キャンセル</button>}
                 <button className="save-button" type="submit" disabled={isSaving}>{isSaving ? '保存中…' : editingStore ? '変更を保存' : '店舗を登録'}</button>
@@ -201,7 +244,7 @@ function App() {
                 {stores.map((store) => (
                   <li key={store.id}>
                     <div className="store-avatar" aria-hidden="true">店</div>
-                    <div className="store-info"><strong>{store.name}</strong><span>手動登録</span></div>
+                    <div className="store-info"><strong>{store.name}</strong><span>{store.latitude != null && store.longitude != null ? '位置情報あり' : '位置情報なし'}</span></div>
                     <div className="store-actions">
                       <button type="button" onClick={() => startEditing(store)}>編集</button>
                       <button className="delete-button" type="button" onClick={() => void deleteStore(store)}>削除</button>

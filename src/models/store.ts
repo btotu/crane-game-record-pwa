@@ -16,4 +16,6 @@ export interface Store {
 
 export interface StoreInput {
   name: string
+  latitude?: number | null
+  longitude?: number | null
 }

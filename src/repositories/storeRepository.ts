@@ -13,9 +13,11 @@ export const storeRepository = {
     const store: Store = {
       id: crypto.randomUUID(),
       name: normalizeName(input.name),
+      latitude: input.latitude ?? undefined,
+      longitude: input.longitude ?? undefined,
       createdAt: now,
       updatedAt: now,
-      registrationSource: 'manual',
+      registrationSource: input.latitude != null && input.longitude != null ? 'location' : 'manual',
       imageSource: 'placeholder',
     }
 
@@ -26,6 +28,9 @@ export const storeRepository = {
   async update(id: string, input: StoreInput): Promise<void> {
     await database.stores.update(id, {
       name: normalizeName(input.name),
+      latitude: input.latitude ?? undefined,
+      longitude: input.longitude ?? undefined,
+      registrationSource: input.latitude != null && input.longitude != null ? 'location' : 'manual',
       updatedAt: new Date().toISOString(),
     })
   },
