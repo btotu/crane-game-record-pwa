@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState, type ChangeEvent, type FormEvent } from 'react'
 import type { Store } from './models/store'
 import { storeService } from './services/storeService'
 import { PrizeManager } from './components/PrizeManager'
@@ -14,6 +14,7 @@ import { ApproximateEntry } from './components/ApproximateEntry'
 import { BackupSettings } from './components/BackupSettings'
 import { SettingsMenu } from './components/SettingsMenu'
 import { locationService, type CurrentPosition } from './services/locationService'
+import { imageService } from './services/imageService'
 import './App.css'
 
 type Screen = 'home' | 'stores' | 'select-store' | 'prizes' | 'play' | 'visit-detail' | 'history-list' | 'prize-detail' | 'store-stats' | 'approximate' | 'settings' | 'backup'
@@ -40,6 +41,8 @@ function App() {
   const [storePosition, setStorePosition] = useState<CurrentPosition | null>(null)
   const [currentPosition, setCurrentPosition] = useState<CurrentPosition | null>(null)
   const [isLocating, setIsLocating] = useState(false)
+  const [storeImageDataUrl, setStoreImageDataUrl] = useState<string | null>(null)
+  const [isProcessingImage, setIsProcessingImage] = useState(false)
 
   const loadStores = useCallback(async () => {
     try {
@@ -90,6 +93,7 @@ function App() {
     setStoreName('')
     setEditingStore(null)
     setStorePosition(null)
+    setStoreImageDataUrl(null)
   }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -98,10 +102,10 @@ function App() {
       setIsSaving(true)
       setError('')
       if (editingStore) {
-        await storeService.update(editingStore.id, { name: storeName, latitude: storePosition?.latitude ?? null, longitude: storePosition?.longitude ?? null })
+        await storeService.update(editingStore.id, { name: storeName, latitude: storePosition?.latitude ?? null, longitude: storePosition?.longitude ?? null, imageDataUrl: storeImageDataUrl })
         setMessage('店舗名を変更しました。')
       } else {
-        await storeService.create({ name: storeName, latitude: storePosition?.latitude, longitude: storePosition?.longitude })
+        await storeService.create({ name: storeName, latitude: storePosition?.latitude, longitude: storePosition?.longitude, imageDataUrl: storeImageDataUrl })
         setMessage('店舗を登録しました。')
       }
       resetForm()
@@ -117,8 +121,25 @@ function App() {
     setEditingStore(store)
     setStoreName(store.name)
     setStorePosition(store.latitude != null && store.longitude != null ? { latitude: store.latitude, longitude: store.longitude, accuracy: 0 } : null)
+    setStoreImageDataUrl(store.imageDataUrl ?? null)
     setMessage('')
     setError('')
+  }
+
+  const selectStoreImage = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    try {
+      setIsProcessingImage(true)
+      setError('')
+      setStoreImageDataUrl(await imageService.compressStoreImage(file))
+      setMessage('画像を準備しました。「店舗を登録」または「変更を保存」で保存してください。')
+    } catch (imageError) {
+      setError(getErrorMessage(imageError))
+    } finally {
+      setIsProcessingImage(false)
+    }
   }
 
   const locate = async (target: 'store' | 'selection') => {
@@ -193,7 +214,7 @@ function App() {
           {currentPosition && <p className="location-status">位置情報を保存済みの店舗を、現在地から近い順に表示しています。</p>}
           {error && <p className="feedback error-message" role="alert">{error}</p>}
           <ul className="selection-list">
-            {storesWithDistance.map(({store,distance}) => <li key={store.id}><button type="button" onClick={() => { setSelectedStore(store); setScreen('prizes') }}><span className="store-avatar" aria-hidden="true">店</span><strong>{store.name}{distance != null && <small>{distance < 1000 ? `約${Math.round(distance / 10) * 10}m` : `約${(distance / 1000).toFixed(1)}km`}</small>}</strong><span aria-hidden="true">›</span></button></li>)}
+            {storesWithDistance.map(({store,distance}) => <li key={store.id}><button type="button" onClick={() => { setSelectedStore(store); setScreen('prizes') }}>{store.imageDataUrl ? <img className="store-list-photo" src={store.imageDataUrl} alt="" /> : <span className="store-avatar" aria-hidden="true">店</span>}<strong>{store.name}{distance != null && <small>{distance < 1000 ? `約${Math.round(distance / 10) * 10}m` : `約${(distance / 1000).toFixed(1)}km`}</small>}</strong><span aria-hidden="true">›</span></button></li>)}
           </ul>
           <button className="secondary-wide-button" type="button" onClick={() => openStores('select-store')}>店舗を追加・編集</button>
         </main>
@@ -218,6 +239,11 @@ function App() {
             <form onSubmit={handleSubmit}>
               <label htmlFor="store-name">店舗名</label>
               <input id="store-name" name="storeName" type="text" value={storeName} onChange={(event) => setStoreName(event.target.value)} maxLength={80} placeholder="例：GiGO ○○店" autoComplete="off" />
+              <div className="store-image-editor">
+                {storeImageDataUrl ? <img src={storeImageDataUrl} alt="保存予定の店舗画像" /> : <div aria-hidden="true">店舗画像なし</div>}
+                <label className="image-select-button">{isProcessingImage ? '画像を処理中…' : '写真を撮影・選択'}<input type="file" accept="image/*" disabled={isProcessingImage} onChange={event => void selectStoreImage(event)} /></label>
+              </div>
+              {storeImageDataUrl && <button className="clear-location-button" type="button" onClick={() => setStoreImageDataUrl(null)}>保存する店舗画像を削除</button>}
               <div className="store-location-row">
                 <button type="button" disabled={isLocating} onClick={() => void locate('store')}>{isLocating ? '取得中…' : storePosition ? '現在地を取り直す' : '現在地を店舗位置にする'}</button>
                 {storePosition ? <span>位置情報あり{storePosition.accuracy > 0 ? `・精度 約${Math.round(storePosition.accuracy)}m` : ''}</span> : <span>位置情報なし</span>}
@@ -225,7 +251,7 @@ function App() {
               {storePosition && <button className="clear-location-button" type="button" onClick={() => setStorePosition(null)}>保存する位置情報を解除</button>}
               <div className="form-actions">
                 {editingStore && <button className="secondary-button" type="button" onClick={resetForm}>キャンセル</button>}
-                <button className="save-button" type="submit" disabled={isSaving}>{isSaving ? '保存中…' : editingStore ? '変更を保存' : '店舗を登録'}</button>
+                <button className="save-button" type="submit" disabled={isSaving || isProcessingImage}>{isSaving ? '保存中…' : editingStore ? '変更を保存' : '店舗を登録'}</button>
               </div>
             </form>
           </section>
@@ -243,7 +269,7 @@ function App() {
               <ul className="store-list">
                 {stores.map((store) => (
                   <li key={store.id}>
-                    <div className="store-avatar" aria-hidden="true">店</div>
+                    {store.imageDataUrl ? <img className="store-list-photo" src={store.imageDataUrl} alt="" /> : <div className="store-avatar" aria-hidden="true">店</div>}
                     <div className="store-info"><strong>{store.name}</strong><span>{store.latitude != null && store.longitude != null ? '位置情報あり' : '位置情報なし'}</span></div>
                     <div className="store-actions">
                       <button type="button" onClick={() => startEditing(store)}>編集</button>

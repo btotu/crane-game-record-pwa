@@ -18,7 +18,8 @@ export const storeRepository = {
       createdAt: now,
       updatedAt: now,
       registrationSource: input.latitude != null && input.longitude != null ? 'location' : 'manual',
-      imageSource: 'placeholder',
+      imageSource: input.imageDataUrl ? 'user' : 'placeholder',
+      imageDataUrl: input.imageDataUrl ?? undefined,
     }
 
     await database.stores.add(store)
@@ -31,6 +32,8 @@ export const storeRepository = {
       latitude: input.latitude ?? undefined,
       longitude: input.longitude ?? undefined,
       registrationSource: input.latitude != null && input.longitude != null ? 'location' : 'manual',
+      imageSource: input.imageDataUrl ? 'user' : 'placeholder',
+      imageDataUrl: input.imageDataUrl ?? undefined,
       updatedAt: new Date().toISOString(),
     })
   },
