@@ -11,9 +11,11 @@ import { HistoryList } from './components/HistoryList'
 import { PrizeVisitDetail } from './components/PrizeVisitDetail'
 import { StoreStats } from './components/StoreStats'
 import { ApproximateEntry } from './components/ApproximateEntry'
+import { BackupSettings } from './components/BackupSettings'
+import { SettingsMenu } from './components/SettingsMenu'
 import './App.css'
 
-type Screen = 'home' | 'stores' | 'select-store' | 'prizes' | 'play' | 'visit-detail' | 'history-list' | 'prize-detail' | 'store-stats' | 'approximate'
+type Screen = 'home' | 'stores' | 'select-store' | 'prizes' | 'play' | 'visit-detail' | 'history-list' | 'prize-detail' | 'store-stats' | 'approximate' | 'settings' | 'backup'
 
 const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : '処理中に問題が発生しました。'
@@ -27,6 +29,7 @@ function App() {
   const [detailOrigin, setDetailOrigin] = useState<'home'|'history-list'>('home')
   const [selectedVisitPrizeId,setSelectedVisitPrizeId]=useState<string|null>(null)
   const [playOrigin,setPlayOrigin]=useState<'prizes'|'prize-detail'>('prizes')
+  const [storeOrigin,setStoreOrigin]=useState<'home'|'select-store'|'settings'>('home')
   const [storeName, setStoreName] = useState('')
   const [editingStore, setEditingStore] = useState<Store | null>(null)
   const [message, setMessage] = useState('')
@@ -65,7 +68,8 @@ function App() {
     }
   }, [])
 
-  const openStores = () => {
+  const openStores = (origin:'home'|'select-store'|'settings'='home') => {
+    setStoreOrigin(origin)
     setMessage('')
     setError('')
     setScreen('stores')
@@ -74,6 +78,7 @@ function App() {
   const openPlay = () => {
     setMessage('')
     setError('')
+    if (stores.length === 0) setStoreOrigin('home')
     setScreen(stores.length === 0 ? 'stores' : 'select-store')
   }
 
@@ -136,6 +141,8 @@ function App() {
   if (screen === 'history-list') return <HistoryList onBack={() => setScreen('home')} onOpen={(visit) => { setSelectedVisit(visit); setDetailOrigin('history-list'); setScreen('visit-detail') }} />
   if (screen === 'store-stats') return <StoreStats onBack={() => setScreen('home')} />
   if (screen === 'approximate') return <ApproximateEntry onBack={() => setScreen('home')} />
+  if (screen === 'settings') return <SettingsMenu onBack={() => setScreen('home')} onStores={() => openStores('settings')} onBackup={() => setScreen('backup')} />
+  if (screen === 'backup') return <BackupSettings onBack={() => setScreen('settings')} />
 
   if (screen === 'prizes' && selectedStore) {
     return <PrizeManager store={selectedStore} onBack={() => setScreen('select-store')} onSelectPrize={(prize) => { setSelectedPrize(prize); setPlayOrigin('prizes'); setScreen('play') }} />
@@ -150,7 +157,7 @@ function App() {
           <ul className="selection-list">
             {stores.map((store) => <li key={store.id}><button type="button" onClick={() => { setSelectedStore(store); setScreen('prizes') }}><span className="store-avatar" aria-hidden="true">店</span><strong>{store.name}</strong><span aria-hidden="true">›</span></button></li>)}
           </ul>
-          <button className="secondary-wide-button" type="button" onClick={openStores}>店舗を追加・編集</button>
+          <button className="secondary-wide-button" type="button" onClick={() => openStores('select-store')}>店舗を追加・編集</button>
         </main>
       </div>
     )
@@ -160,7 +167,7 @@ function App() {
     return (
       <div className="app-shell">
         <header className="page-header">
-          <button className="back-button" type="button" onClick={() => setScreen('home')} aria-label="ホームへ戻る">‹</button>
+          <button className="back-button" type="button" onClick={() => setScreen(storeOrigin)} aria-label="前の画面へ戻る">‹</button>
           <div><p className="app-eyebrow">STORE SETTINGS</p><h1>店舗の登録</h1></div>
         </header>
 
@@ -213,7 +220,7 @@ function App() {
     <div className="app-shell">
       <header className="app-header">
         <div><p className="app-eyebrow">CRANE PLAY LOG</p><h1>クレーン記録</h1></div>
-        <button className="icon-button" type="button" aria-label="店舗設定" onClick={openStores}>
+        <button className="icon-button" type="button" aria-label="設定" onClick={() => setScreen('settings')}>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.25A3.25 3.25 0 1 0 12 8.75a3.25 3.25 0 0 0 0 6.5Z" /><path d="M19.4 13.5a7.9 7.9 0 0 0 .05-1.5 7.9 7.9 0 0 0-.05-1.5l1.65-1.28-1.7-2.94-1.94.78a7.8 7.8 0 0 0-2.6-1.5L14.5 3.5h-3.4l-.31 2.06a7.8 7.8 0 0 0-2.6 1.5l-1.94-.78-1.7 2.94L6.2 10.5a7.9 7.9 0 0 0-.05 1.5 7.9 7.9 0 0 0 .05 1.5l-1.65 1.28 1.7 2.94 1.94-.78a7.8 7.8 0 0 0 2.6 1.5l.31 2.06h3.4l.31-2.06a7.8 7.8 0 0 0 2.6-1.5l1.94.78 1.7-2.94L19.4 13.5Z" /></svg>
         </button>
       </header>
