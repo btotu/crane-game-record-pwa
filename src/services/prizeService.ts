@@ -5,6 +5,9 @@ const validate = (input: PrizeInput) => {
   if (!input.name.trim()) throw new Error('景品名を入力してください。')
   if (input.name.trim().length > 100) throw new Error('景品名は100文字以内で入力してください。')
   if (!Number.isInteger(input.estimatedPrice) || input.estimatedPrice < 0 || input.estimatedPrice > 1000000) throw new Error('参考価格は0～1,000,000円の整数で入力してください。')
+  if (!Number.isInteger(input.unitPrice) || input.unitPrice < 0 || input.unitPrice > 1000000) throw new Error('単価は0～1,000,000円の整数で入力してください。')
+  if (!Number.isInteger(input.quantity) || input.quantity < 1 || input.quantity > 100) throw new Error('数量は1～100個の整数で入力してください。')
+  if (input.estimatedPrice !== input.unitPrice * input.quantity) throw new Error('参考価格の計算結果が一致しません。')
   if (input.janCode && !/^(\d{8}|\d{13})$/.test(input.janCode.trim())) throw new Error('JANコードは8桁または13桁の数字で入力してください。')
   if (input.priceReferenceName && input.priceReferenceName.trim().length > 80) throw new Error('参考サイト名は80文字以内で入力してください。')
   if (input.priceReferenceUrl) {

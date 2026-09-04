@@ -16,9 +16,10 @@ import { SettingsMenu } from './components/SettingsMenu'
 import { locationService, type CurrentPosition } from './services/locationService'
 import { imageService } from './services/imageService'
 import { nearbyStoreService, type NearbyStoreCandidate } from './services/nearbyStoreService'
+import { ProductApiSettings } from './components/ProductApiSettings'
 import './App.css'
 
-type Screen = 'home' | 'stores' | 'select-store' | 'prizes' | 'play' | 'visit-detail' | 'history-list' | 'prize-detail' | 'store-stats' | 'approximate' | 'settings' | 'backup'
+type Screen = 'home' | 'stores' | 'select-store' | 'prizes' | 'play' | 'visit-detail' | 'history-list' | 'prize-detail' | 'store-stats' | 'approximate' | 'settings' | 'backup' | 'product-api-settings'
 
 const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : '処理中に問題が発生しました。'
@@ -235,8 +236,9 @@ function App() {
   if (screen === 'history-list') return <HistoryList onBack={() => setScreen('home')} onOpen={(visit) => { setSelectedVisit(visit); setDetailOrigin('history-list'); setScreen('visit-detail') }} />
   if (screen === 'store-stats') return <StoreStats onBack={() => setScreen('home')} />
   if (screen === 'approximate') return <ApproximateEntry onBack={() => setScreen('home')} />
-  if (screen === 'settings') return <SettingsMenu onBack={() => setScreen('home')} onStores={() => openStores('settings')} onBackup={() => setScreen('backup')} />
+  if (screen === 'settings') return <SettingsMenu onBack={() => setScreen('home')} onStores={() => openStores('settings')} onProductApi={() => setScreen('product-api-settings')} onBackup={() => setScreen('backup')} />
   if (screen === 'backup') return <BackupSettings onBack={() => setScreen('settings')} />
+  if (screen === 'product-api-settings') return <ProductApiSettings onBack={() => setScreen('settings')} />
 
   if (screen === 'prizes' && selectedStore) {
     return <PrizeManager store={selectedStore} onBack={() => setScreen('select-store')} onSelectPrize={(prize) => { setSelectedPrize(prize); setPlayOrigin('prizes'); setScreen('play') }} />

@@ -6,6 +6,8 @@ export interface Prize {
   name: string
   category: PrizeCategory
   estimatedPrice: number
+  unitPrice?: number
+  quantity?: number
   priceSource: 'user'
   userEditedPrice: boolean
   imageDataUrl?: string
@@ -21,6 +23,8 @@ export interface PrizeInput {
   name: string
   category: PrizeCategory
   estimatedPrice: number
+  unitPrice: number
+  quantity: number
   imageDataUrl?: string | null
   janCode?: string
   priceReferenceName?: string

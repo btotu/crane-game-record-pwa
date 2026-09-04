@@ -9,3 +9,4 @@
 html, body, #root { min-width: 320px; min-height: 100%; }
 body { min-height: 100vh; margin: 0; }
 #root { min-height: 100vh; }
+.quantity-price-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end}.quantity-price-row>label{grid-column:1/-1}.quantity-price-row>input{min-width:0}.quantity-price-row>p{margin:0;padding:10px 12px;border:1px solid #f0d4ad;border-radius:12px;background:#fff7e8;display:flex;flex-direction:column;gap:2px}.quantity-price-row>p span,.quantity-price-row>p small{font-size:.72rem;color:#806c56}.quantity-price-row>p strong{font-size:1.15rem;color:#d95d17}@media(max-width:420px){.quantity-price-row{grid-template-columns:1fr}.quantity-price-row>label{grid-column:auto}}
