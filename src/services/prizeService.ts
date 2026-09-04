@@ -1,4 +1,4 @@
-import type { PrizeInput } from '../models/prize'
+import { priceBasisOptions, type PrizeInput } from '../models/prize'
 import { prizeRepository } from '../repositories/prizeRepository'
 
 const validate = (input: PrizeInput) => {
@@ -8,6 +8,7 @@ const validate = (input: PrizeInput) => {
   if (!Number.isInteger(input.unitPrice) || input.unitPrice < 0 || input.unitPrice > 1000000) throw new Error('単価は0～1,000,000円の整数で入力してください。')
   if (!Number.isInteger(input.quantity) || input.quantity < 1 || input.quantity > 100) throw new Error('数量は1～100個の整数で入力してください。')
   if (input.estimatedPrice !== input.unitPrice * input.quantity) throw new Error('参考価格の計算結果が一致しません。')
+  if (!priceBasisOptions.includes(input.priceBasis)) throw new Error('価格の評価方法を選択してください。')
   if (input.janCode && !/^(\d{8}|\d{13})$/.test(input.janCode.trim())) throw new Error('JANコードは8桁または13桁の数字で入力してください。')
   if (input.priceReferenceName && input.priceReferenceName.trim().length > 80) throw new Error('参考サイト名は80文字以内で入力してください。')
   if (input.priceReferenceUrl) {
