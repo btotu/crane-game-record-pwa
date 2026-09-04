@@ -8,7 +8,7 @@ export interface Prize {
   estimatedPrice: number
   unitPrice?: number
   quantity?: number
-  priceSource: 'user'
+  priceSource: 'user' | 'yahoo'
   userEditedPrice: boolean
   imageDataUrl?: string
   janCode?: string
@@ -25,6 +25,8 @@ export interface PrizeInput {
   estimatedPrice: number
   unitPrice: number
   quantity: number
+  priceSource: 'user' | 'yahoo'
+  userEditedPrice: boolean
   imageDataUrl?: string | null
   janCode?: string
   priceReferenceName?: string
