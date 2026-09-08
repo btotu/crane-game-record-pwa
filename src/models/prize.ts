@@ -13,6 +13,8 @@ export interface Prize {
   priceSource: 'user' | 'yahoo'
   userEditedPrice: boolean
   priceBasis?: PriceBasis
+  manufacturer?: string
+  contentDescription?: string
   imageDataUrl?: string
   janCode?: string
   priceReferenceName?: string
@@ -31,6 +33,8 @@ export interface PrizeInput {
   priceSource: 'user' | 'yahoo'
   userEditedPrice: boolean
   priceBasis: PriceBasis
+  manufacturer?: string
+  contentDescription?: string
   imageDataUrl?: string | null
   janCode?: string
   priceReferenceName?: string
