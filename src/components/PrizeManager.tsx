@@ -8,10 +8,11 @@ import { yahooProductService, type ProductCandidate } from '../services/yahooPro
 
 const BarcodeScanner = lazy(() => import('./BarcodeScanner').then(module => ({ default: module.BarcodeScanner })))
 
-interface Props { store: Store; onBack: () => void; onSelectPrize: (prize: Prize) => void }
+interface Props { store?: Store; onBack: () => void; onSelectPrize?: (prize: Prize) => void; mode?: 'select' | 'manage' }
 const errorText = (error: unknown) => error instanceof Error ? error.message : '処理に失敗しました。'
+const normalizeName = (value: string) => value.trim().replace(/[\s　]+/g, '').toLocaleLowerCase('ja-JP')
 
-export function PrizeManager({ store, onBack, onSelectPrize }: Props) {
+export function PrizeManager({ store, onBack, onSelectPrize, mode = 'select' }: Props) {
   const [formOpen, setFormOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [prizes, setPrizes] = useState<Prize[]>([])
@@ -49,6 +50,12 @@ export function PrizeManager({ store, onBack, onSelectPrize }: Props) {
     return categoryMatches && (!normalizedQuery || searchTarget.includes(normalizedQuery))
   })
   const filterActive = normalizedQuery.length > 0 || categoryFilter !== 'すべて'
+  const normalizedPrizeName = normalizeName(name)
+  const similarNamePrizes = normalizedPrizeName.length >= 2
+    ? prizes.filter(prize => prize.id !== editing?.id && normalizeName(prize.name).includes(normalizedPrizeName)).slice(0, 5)
+    : []
+  const exactNameMatch = similarNamePrizes.some(prize => normalizeName(prize.name) === normalizedPrizeName)
+  const managementMode = mode === 'manage'
 
   const reload = async () => setPrizes(await prizeService.list())
   useEffect(() => { void prizeService.list().then(setPrizes).catch((e: unknown) => setError(errorText(e))) }, [])
@@ -93,12 +100,13 @@ export function PrizeManager({ store, onBack, onSelectPrize }: Props) {
   }
 
   return <div className="app-shell">
-    <header className="page-header"><button className="back-button" type="button" onClick={() => { if (formOpen) { reset(); setFormOpen(false); setError(''); setFeedback(''); window.scrollTo(0, 0) } else onBack() }}>‹</button><div><p className="app-eyebrow">PRIZE SETUP</p><h1>{formOpen ? editing ? '景品を編集' : '景品を新規登録' : '景品を選択'}</h1></div></header>
+    <header className="page-header"><button className="back-button" type="button" onClick={() => { if (formOpen) { reset(); setFormOpen(false); setError(''); setFeedback(''); window.scrollTo(0, 0) } else onBack() }}>‹</button><div><p className="app-eyebrow">{managementMode ? 'PRIZE SETTINGS' : 'PRIZE SETUP'}</p><h1>{formOpen ? editing ? '景品を編集' : '景品を新規登録' : managementMode ? '景品の登録・編集' : '景品を選択'}</h1></div></header>
     <main className="store-main">
-      <p className="selected-store">プレイ店舗 <strong>{store.name}</strong></p>
+      {store && <p className="selected-store">プレイ店舗 <strong>{store.name}</strong></p>}
       {formOpen && <section className="form-card"><div className="section-heading"><span className="section-number">02</span><div><h2>{editing ? '景品を編集' : '景品を手動登録'}</h2><p>代表写真を1枚保存できます</p></div></div>
         <form onSubmit={submit} className="prize-form">
-          <label htmlFor="prize-name">景品名</label><input id="prize-name" value={name} onChange={e => setName(e.target.value)} maxLength={100} placeholder="例：ポテトチップス 4袋セット" />
+          <label htmlFor="prize-name">景品名</label><input id="prize-name" value={name} onChange={e => setName(e.target.value)} maxLength={100} placeholder="例：ポテトチップス 4袋セット" autoComplete="off" />
+          {similarNamePrizes.length > 0 && <aside className={`prize-name-suggestions ${exactNameMatch ? 'exact-match' : ''}`} aria-live="polite"><strong>{exactNameMatch ? '同じ名前の景品が登録されています' : '似た名前の登録済み景品'}</strong><ul>{similarNamePrizes.map(prize => <li key={prize.id}><span>{prize.name}</span><small>{prize.category}{prize.manufacturer ? `・${prize.manufacturer}` : ''}</small></li>)}</ul><p>{exactNameMatch ? '同じ景品であれば新規登録せず、一覧から既存の景品を利用できます。' : '入力を続けて一致しなくなると、この候補は消えます。'}</p></aside>}
           <div className="form-row"><div><label htmlFor="manufacturer">メーカー名（任意）</label><input id="manufacturer" value={manufacturer} onChange={e => setManufacturer(e.target.value)} maxLength={80} placeholder="例：カルビー" /></div><div><label htmlFor="content-description">内容量・サイズ（任意）</label><input id="content-description" value={contentDescription} onChange={e => setContentDescription(e.target.value)} maxLength={80} placeholder="例：60g、約20cm" /></div></div>
           <div className="prize-image-editor">{imageDataUrl ? <img src={imageDataUrl} alt="保存予定の景品写真" /> : <div aria-hidden="true">景品写真なし</div>}<label className="image-select-button">{isProcessingImage ? '画像を処理中…' : '写真を撮影・選択'}<input type="file" accept="image/*" disabled={isProcessingImage} onChange={event => void selectImage(event)} /></label></div>
           {imageDataUrl && <button className="remove-image-button" type="button" onClick={() => setImageDataUrl(null)}>この景品写真を削除</button>}
@@ -116,7 +124,7 @@ export function PrizeManager({ store, onBack, onSelectPrize }: Props) {
         </form>
       </section>}
       {error && <p className="feedback error-message" role="alert">{error}</p>}{feedback && <p className="feedback success-message" role="status">{feedback}</p>}
-      {!formOpen && <><p>プレイする景品を選んで、使用額と結果の入力へ進んでください。</p>
+      {!formOpen && <><p>{managementMode ? '登録済み景品の確認、追加、編集、削除ができます。' : 'プレイする景品を選んで、使用額と結果の入力へ進んでください。'}</p>
       <button className="primary-wide-button" type="button" onClick={() => { reset(); setError(''); setFeedback(''); setFormOpen(true); window.scrollTo(0, 0) }}>＋ 景品を新規登録</button>
       <section className="prize-filter-panel" aria-label="景品の絞り込み">
         <label htmlFor="prize-search">景品を検索</label>
@@ -126,7 +134,7 @@ export function PrizeManager({ store, onBack, onSelectPrize }: Props) {
         {filterActive && <button type="button" onClick={() => { setSearchQuery(''); setCategoryFilter('すべて') }}>絞り込みを解除</button>}
       </section>
       <section className="store-list-section"><div className="list-heading"><div><h2>登録済み景品</h2><p>すべての店舗で再利用できます</p></div><span>{filterActive ? `${filteredPrizes.length} / ${prizes.length}件` : `${prizes.length}件`}</span></div>
-        {prizes.length === 0 ? <p className="list-empty">登録済み景品はありません。</p> : filteredPrizes.length === 0 ? <p className="list-empty">条件に一致する景品はありません。検索語やカテゴリを変更してください。</p> : <ul className="prize-list">{filteredPrizes.map(prize => <li key={prize.id}><button className="prize-select" type="button" onClick={()=>onSelectPrize(prize)}>{prize.imageDataUrl ? <img className="prize-list-photo" src={prize.imageDataUrl} alt="" /> : <div className="prize-photo-placeholder" aria-hidden="true">景</div>}<div className="prize-info"><strong>{prize.name}</strong>{(prize.manufacturer || prize.contentDescription) && <small className="prize-product-meta">{[prize.manufacturer, prize.contentDescription].filter(Boolean).join(' ・ ')}</small>}<span>{prize.category}・参考価格 {prize.estimatedPrice.toLocaleString()}円{(prize.quantity ?? 1) > 1 ? `（${(prize.unitPrice ?? 0).toLocaleString()}円×${prize.quantity}個）` : ''}{prize.priceReferenceName ? `・${prize.priceReferenceName}` : ''}</span><small className="price-basis-label">{prize.priceBasis ?? (prize.category === 'フィギュア' || prize.category === 'ぬいぐるみ' ? 'プライズ品の市場相場' : 'その他の手入力')}</small><em className={`price-origin-badge ${(prize.userEditedPrice ?? true) ? 'edited' : 'automatic'}`}>{(prize.userEditedPrice ?? true) ? 'ユーザー編集価格' : '自動取得価格'}</em></div><span aria-hidden="true">›</span></button><div className="store-actions"><button type="button" onClick={() => startEdit(prize)}>編集</button><button className="delete-button" type="button" onClick={() => void remove(prize)}>削除</button></div></li>)}</ul>}
+        {prizes.length === 0 ? <p className="list-empty">登録済み景品はありません。</p> : filteredPrizes.length === 0 ? <p className="list-empty">条件に一致する景品はありません。検索語やカテゴリを変更してください。</p> : <ul className="prize-list">{filteredPrizes.map(prize => <li key={prize.id}><button className="prize-select" type="button" onClick={() => managementMode ? startEdit(prize) : onSelectPrize?.(prize)}>{prize.imageDataUrl ? <img className="prize-list-photo" src={prize.imageDataUrl} alt="" /> : <div className="prize-photo-placeholder" aria-hidden="true">景</div>}<div className="prize-info"><strong>{prize.name}</strong>{(prize.manufacturer || prize.contentDescription) && <small className="prize-product-meta">{[prize.manufacturer, prize.contentDescription].filter(Boolean).join(' ・ ')}</small>}<span>{prize.category}・参考価格 {prize.estimatedPrice.toLocaleString()}円{(prize.quantity ?? 1) > 1 ? `（${(prize.unitPrice ?? 0).toLocaleString()}円×${prize.quantity}個）` : ''}{prize.priceReferenceName ? `・${prize.priceReferenceName}` : ''}</span><small className="price-basis-label">{prize.priceBasis ?? (prize.category === 'フィギュア' || prize.category === 'ぬいぐるみ' ? 'プライズ品の市場相場' : 'その他の手入力')}</small><em className={`price-origin-badge ${(prize.userEditedPrice ?? true) ? 'edited' : 'automatic'}`}>{(prize.userEditedPrice ?? true) ? 'ユーザー編集価格' : '自動取得価格'}</em></div><span aria-hidden="true">›</span></button><div className="store-actions">{!managementMode && <button type="button" onClick={() => startEdit(prize)}>編集</button>}<button className="delete-button" type="button" onClick={() => void remove(prize)}>削除</button></div></li>)}</ul>}
       </section></>}
     </main>
     {scannerOpen && <Suspense fallback={<div className="scanner-overlay"><div className="scanner-panel"><p className="list-empty">読取機能を準備しています…</p></div></div>}><BarcodeScanner onDetected={barcodeDetected} onClose={() => setScannerOpen(false)} /></Suspense>}
