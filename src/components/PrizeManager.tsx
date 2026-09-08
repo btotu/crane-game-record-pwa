@@ -15,6 +15,8 @@ export function PrizeManager({ store, onBack, onSelectPrize }: Props) {
   const [formOpen, setFormOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [prizes, setPrizes] = useState<Prize[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState<'すべて' | PrizeCategory>('すべて')
   const [name, setName] = useState('')
   const [category, setCategory] = useState<PrizeCategory>('食品')
   const [price, setPrice] = useState('')
@@ -36,6 +38,17 @@ export function PrizeManager({ store, onBack, onSelectPrize }: Props) {
   const [priceCheckedAt, setPriceCheckedAt] = useState(todayKey())
   const [productCandidates, setProductCandidates] = useState<ProductCandidate[]>([])
   const [isSearchingProducts, setIsSearchingProducts] = useState(false)
+
+  const normalizedQuery = searchQuery.trim().toLocaleLowerCase('ja-JP')
+  const filteredPrizes = prizes.filter(prize => {
+    const categoryMatches = categoryFilter === 'すべて' || prize.category === categoryFilter
+    const searchTarget = [prize.name, prize.manufacturer, prize.contentDescription, prize.janCode]
+      .filter(Boolean)
+      .join(' ')
+      .toLocaleLowerCase('ja-JP')
+    return categoryMatches && (!normalizedQuery || searchTarget.includes(normalizedQuery))
+  })
+  const filterActive = normalizedQuery.length > 0 || categoryFilter !== 'すべて'
 
   const reload = async () => setPrizes(await prizeService.list())
   useEffect(() => { void prizeService.list().then(setPrizes).catch((e: unknown) => setError(errorText(e))) }, [])
@@ -105,8 +118,15 @@ export function PrizeManager({ store, onBack, onSelectPrize }: Props) {
       {error && <p className="feedback error-message" role="alert">{error}</p>}{feedback && <p className="feedback success-message" role="status">{feedback}</p>}
       {!formOpen && <><p>プレイする景品を選んで、使用額と結果の入力へ進んでください。</p>
       <button className="primary-wide-button" type="button" onClick={() => { reset(); setError(''); setFeedback(''); setFormOpen(true); window.scrollTo(0, 0) }}>＋ 景品を新規登録</button>
-      <section className="store-list-section"><div className="list-heading"><div><h2>登録済み景品</h2><p>すべての店舗で再利用できます</p></div><span>{prizes.length}件</span></div>
-        {prizes.length === 0 ? <p className="list-empty">登録済み景品はありません。</p> : <ul className="prize-list">{prizes.map(prize => <li key={prize.id}><button className="prize-select" type="button" onClick={()=>onSelectPrize(prize)}>{prize.imageDataUrl ? <img className="prize-list-photo" src={prize.imageDataUrl} alt="" /> : <div className="prize-photo-placeholder" aria-hidden="true">景</div>}<div className="prize-info"><strong>{prize.name}</strong>{(prize.manufacturer || prize.contentDescription) && <small className="prize-product-meta">{[prize.manufacturer, prize.contentDescription].filter(Boolean).join(' ・ ')}</small>}<span>{prize.category}・参考価格 {prize.estimatedPrice.toLocaleString()}円{(prize.quantity ?? 1) > 1 ? `（${(prize.unitPrice ?? 0).toLocaleString()}円×${prize.quantity}個）` : ''}{prize.priceReferenceName ? `・${prize.priceReferenceName}` : ''}</span><small className="price-basis-label">{prize.priceBasis ?? (prize.category === 'フィギュア' || prize.category === 'ぬいぐるみ' ? 'プライズ品の市場相場' : 'その他の手入力')}</small><em className={`price-origin-badge ${(prize.userEditedPrice ?? true) ? 'edited' : 'automatic'}`}>{(prize.userEditedPrice ?? true) ? 'ユーザー編集価格' : '自動取得価格'}</em></div><span aria-hidden="true">›</span></button><div className="store-actions"><button type="button" onClick={() => startEdit(prize)}>編集</button><button className="delete-button" type="button" onClick={() => void remove(prize)}>削除</button></div></li>)}</ul>}
+      <section className="prize-filter-panel" aria-label="景品の絞り込み">
+        <label htmlFor="prize-search">景品を検索</label>
+        <input id="prize-search" type="search" value={searchQuery} onChange={event => setSearchQuery(event.target.value)} placeholder="景品名・メーカー名で検索" />
+        <label htmlFor="prize-category-filter">カテゴリ</label>
+        <select id="prize-category-filter" value={categoryFilter} onChange={event => setCategoryFilter(event.target.value as 'すべて' | PrizeCategory)}><option value="すべて">すべてのカテゴリ</option>{prizeCategories.map(item => <option key={item} value={item}>{item}</option>)}</select>
+        {filterActive && <button type="button" onClick={() => { setSearchQuery(''); setCategoryFilter('すべて') }}>絞り込みを解除</button>}
+      </section>
+      <section className="store-list-section"><div className="list-heading"><div><h2>登録済み景品</h2><p>すべての店舗で再利用できます</p></div><span>{filterActive ? `${filteredPrizes.length} / ${prizes.length}件` : `${prizes.length}件`}</span></div>
+        {prizes.length === 0 ? <p className="list-empty">登録済み景品はありません。</p> : filteredPrizes.length === 0 ? <p className="list-empty">条件に一致する景品はありません。検索語やカテゴリを変更してください。</p> : <ul className="prize-list">{filteredPrizes.map(prize => <li key={prize.id}><button className="prize-select" type="button" onClick={()=>onSelectPrize(prize)}>{prize.imageDataUrl ? <img className="prize-list-photo" src={prize.imageDataUrl} alt="" /> : <div className="prize-photo-placeholder" aria-hidden="true">景</div>}<div className="prize-info"><strong>{prize.name}</strong>{(prize.manufacturer || prize.contentDescription) && <small className="prize-product-meta">{[prize.manufacturer, prize.contentDescription].filter(Boolean).join(' ・ ')}</small>}<span>{prize.category}・参考価格 {prize.estimatedPrice.toLocaleString()}円{(prize.quantity ?? 1) > 1 ? `（${(prize.unitPrice ?? 0).toLocaleString()}円×${prize.quantity}個）` : ''}{prize.priceReferenceName ? `・${prize.priceReferenceName}` : ''}</span><small className="price-basis-label">{prize.priceBasis ?? (prize.category === 'フィギュア' || prize.category === 'ぬいぐるみ' ? 'プライズ品の市場相場' : 'その他の手入力')}</small><em className={`price-origin-badge ${(prize.userEditedPrice ?? true) ? 'edited' : 'automatic'}`}>{(prize.userEditedPrice ?? true) ? 'ユーザー編集価格' : '自動取得価格'}</em></div><span aria-hidden="true">›</span></button><div className="store-actions"><button type="button" onClick={() => startEdit(prize)}>編集</button><button className="delete-button" type="button" onClick={() => void remove(prize)}>削除</button></div></li>)}</ul>}
       </section></>}
     </main>
     {scannerOpen && <Suspense fallback={<div className="scanner-overlay"><div className="scanner-panel"><p className="list-empty">読取機能を準備しています…</p></div></div>}><BarcodeScanner onDetected={barcodeDetected} onClose={() => setScannerOpen(false)} /></Suspense>}
