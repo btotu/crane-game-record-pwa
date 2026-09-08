@@ -224,7 +224,7 @@ function App() {
   }
 
   if (screen === 'play' && selectedStore && selectedPrize) {
-    return <PlayRecorder store={selectedStore} prize={selectedPrize} onBack={() => setScreen(playOrigin)} />
+    return <PlayRecorder store={selectedStore} prize={selectedPrize} onBack={() => setScreen(playOrigin)} onFinish={() => setScreen('home')} onChoosePrize={() => setScreen('prizes')} />
   }
 
   if (screen === 'visit-detail' && selectedVisit) {
