@@ -1,3 +1,4 @@
+import { StoreToday } from './components/StoreToday'
 import { useCallback, useEffect, useState, type ChangeEvent, type FormEvent } from 'react'
 import type { Store } from './models/store'
 import { storeService } from './services/storeService'
@@ -19,7 +20,7 @@ import { nearbyStoreService, type NearbyStoreCandidate } from './services/nearby
 import { ProductApiSettings } from './components/ProductApiSettings'
 import './App.css'
 
-type Screen = 'home' | 'stores' | 'select-store' | 'prizes' | 'play' | 'visit-detail' | 'history-list' | 'prize-detail' | 'store-stats' | 'approximate' | 'settings' | 'backup' | 'product-api-settings'
+type Screen = 'store-today' | 'home' | 'stores' | 'select-store' | 'prizes' | 'play' | 'visit-detail' | 'history-list' | 'prize-detail' | 'store-stats' | 'approximate' | 'settings' | 'backup' | 'product-api-settings'
 
 const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : '処理中に問題が発生しました。'
@@ -32,7 +33,7 @@ function App() {
   const [selectedVisit, setSelectedVisit] = useState<VisitSummary | null>(null)
   const [detailOrigin, setDetailOrigin] = useState<'home'|'history-list'>('home')
   const [selectedVisitPrizeId,setSelectedVisitPrizeId]=useState<string|null>(null)
-  const [playOrigin,setPlayOrigin]=useState<'prizes'|'prize-detail'>('prizes')
+  const [playOrigin,setPlayOrigin]=useState<'prizes'|'prize-detail'|'store-today'>('prizes')
   const [storeOrigin,setStoreOrigin]=useState<'home'|'select-store'|'settings'>('home')
   const [storeName, setStoreName] = useState('')
   const [editingStore, setEditingStore] = useState<Store | null>(null)
@@ -202,7 +203,7 @@ function App() {
       const store = await storeService.create({ name: candidate.name, latitude: candidate.latitude, longitude: candidate.longitude, externalStoreId: candidate.externalStoreId })
       setStores(current => [store, ...current])
       setSelectedStore(store)
-      setScreen('prizes')
+      setScreen('store-today')
     } catch (saveError) {
       setError(getErrorMessage(saveError))
     } finally {
@@ -223,8 +224,10 @@ function App() {
     }
   }
 
+  if (screen === 'store-today' && selectedStore) return <StoreToday store={selectedStore} onAdd={() => setScreen('prizes')} onFinish={() => setScreen('home')} onSelect={(prize) => { setSelectedPrize(prize); setPlayOrigin('store-today'); setScreen('play') }} />
+
   if (screen === 'play' && selectedStore && selectedPrize) {
-    return <PlayRecorder store={selectedStore} prize={selectedPrize} onBack={() => setScreen(playOrigin)} onFinish={() => setScreen('home')} onChoosePrize={() => setScreen('prizes')} />
+    return <PlayRecorder store={selectedStore} prize={selectedPrize} onBack={() => setScreen(playOrigin)} onSaved={() => setScreen('store-today')} />
   }
 
   if (screen === 'visit-detail' && selectedVisit) {
@@ -241,7 +244,7 @@ function App() {
   if (screen === 'product-api-settings') return <ProductApiSettings onBack={() => setScreen('settings')} />
 
   if (screen === 'prizes' && selectedStore) {
-    return <PrizeManager store={selectedStore} onBack={() => setScreen('select-store')} onSelectPrize={(prize) => { setSelectedPrize(prize); setPlayOrigin('prizes'); setScreen('play') }} />
+    return <PrizeManager store={selectedStore} onBack={() => setScreen('store-today')} onSelectPrize={(prize) => { setSelectedPrize(prize); setPlayOrigin('prizes'); setScreen('play') }} />
   }
 
   if (screen === 'select-store') {
@@ -256,7 +259,7 @@ function App() {
           {message && <p className="feedback success-message" role="status">{message}</p>}
           {stores.length > 0 && <div className="nearby-heading"><strong>登録済み店舗</strong><span>近い順</span></div>}
           <ul className="selection-list">
-            {storesWithDistance.map(({store,distance}) => <li key={store.id}><button type="button" onClick={() => { setSelectedStore(store); setScreen('prizes') }}>{store.imageDataUrl ? <img className="store-list-photo" src={store.imageDataUrl} alt="" /> : <span className="store-avatar" aria-hidden="true">店</span>}<strong>{store.name}{distance != null && <small>{distance < 1000 ? `約${Math.round(distance / 10) * 10}m` : `約${(distance / 1000).toFixed(1)}km`}</small>}</strong><span aria-hidden="true">›</span></button></li>)}
+            {storesWithDistance.map(({store,distance}) => <li key={store.id}><button type="button" onClick={() => { setSelectedStore(store); setScreen('store-today') }}>{store.imageDataUrl ? <img className="store-list-photo" src={store.imageDataUrl} alt="" /> : <span className="store-avatar" aria-hidden="true">店</span>}<strong>{store.name}{distance != null && <small>{distance < 1000 ? `約${Math.round(distance / 10) * 10}m` : `約${(distance / 1000).toFixed(1)}km`}</small>}</strong><span aria-hidden="true">›</span></button></li>)}
           </ul>
           <section className="nearby-search-section">
             <button className="nearby-search-button" type="button" disabled={isSearchingNearby} onClick={() => void searchNearbyStores()}>{isSearchingNearby ? '周辺を検索中…' : '周辺5kmの未登録店舗を検索'}</button>
