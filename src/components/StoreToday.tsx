@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react'
 import type { Store } from '../models/store'
 import type { Prize } from '../models/prize'
-import type { VisitPlayDetail } from '../models/visit'
+import type { VisitPlayDetail, VisitSummary } from '../models/visit'
 import { visitService } from '../services/visitService'
 import { prizeService } from '../services/prizeService'
 import { todayKey } from '../services/playService'
 
-interface Props { store: Store; onAdd: () => void; onFinish: () => void; onSelect: (prize: Prize) => void }
+interface Props { store: Store; onAdd: () => void; onFinish: () => void; onSelect: (prize: Prize) => void; onOpenDetail: (visit:VisitSummary, prizeId:string) => void }
 const yen = (value: number) => `${value.toLocaleString()}円`
-export function StoreToday({ store, onAdd, onFinish, onSelect }: Props) {
+export function StoreToday({ store, onAdd, onFinish, onSelect, onOpenDetail }: Props) {
   const [plays, setPlays] = useState<VisitPlayDetail[]>([])
   const [prizes, setPrizes] = useState<Prize[]>([])
   const [error, setError] = useState('')
@@ -34,6 +34,7 @@ export function StoreToday({ store, onAdd, onFinish, onSelect }: Props) {
     const items = plays.filter(play => play.prizeId === id)
     return { id, items, prize: prizes.find(prize => prize.id === id), spent: items.reduce((sum, item) => sum + item.amount, 0), value: items.reduce((sum, item) => sum + item.estimatedValue, 0), wins: items.filter(item => item.result !== '撤退').length }
   })
+  const openDetail = (prizeId:string) => onOpenDetail({ id:`${date}:${store.id}`, storeId:store.id, storeName:store.name, storeImageDataUrl:store.imageDataUrl, playDate:date, startedAt:plays[0]?.startedAt ?? new Date().toISOString(), totalSpent:spent, estimatedPrizeValue:value, profit:value-spent, acquiredCount:wins, playCount:plays.length, isApproximate:plays.some(play=>play.isApproximate) }, prizeId)
   return <div className="app-shell"><header className="page-header"><div><p className="app-eyebrow">TODAY'S RECORD</p><h1>{store.name}</h1></div></header><main className="store-main">
     <p>{date.replaceAll('-', ' / ')}・当日の店舗記録</p>
     {loading ? <p role="status">記録を読み込み中…</p> : error ? <p role="alert">{error}</p> : <>
@@ -45,7 +46,7 @@ export function StoreToday({ store, onAdd, onFinish, onSelect }: Props) {
       {groups.length === 0 && <p className="list-empty">今日はまだ記録がありません。「プレイを追加」から始めてください。</p>}
       {groups.map(group => <section className="result-card" key={group.id}><h2>{group.items[0].prizeName}</h2><p>使用額 {yen(group.spent)}・獲得 {group.wins}個</p><p>参考損益 {group.value >= group.spent ? '+' : ''}{yen(group.value - group.spent)}</p>
         <ul>{group.items.map(item => <li key={item.id}>{new Date(item.startedAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}・{item.result}・{yen(item.amount)}{item.isApproximate ? '（概算）' : ''}{item.memo && <p>{item.memo}</p>}</li>)}</ul>
-        {group.prize && <button className="secondary-wide-button" type="button" onClick={() => onSelect(group.prize!)}>この景品にプレイを追加</button>}
+        <div className="today-prize-actions"><button type="button" onClick={() => openDetail(group.id)}>記録を確認・修正</button>{group.prize && <button type="button" onClick={() => onSelect(group.prize!)}>この景品にプレイを追加</button>}</div>
       </section>)}
     </>}
     <button className="primary-wide-button" type="button" onClick={onFinish}>入力完了・ホームへ戻る</button>

@@ -33,6 +33,7 @@ function App() {
   const [selectedVisit, setSelectedVisit] = useState<VisitSummary | null>(null)
   const [detailOrigin, setDetailOrigin] = useState<'home'|'history-list'>('home')
   const [selectedVisitPrizeId,setSelectedVisitPrizeId]=useState<string|null>(null)
+  const [prizeDetailOrigin,setPrizeDetailOrigin]=useState<'visit-detail'|'store-today'>('visit-detail')
   const [playOrigin,setPlayOrigin]=useState<'prizes'|'prize-detail'|'store-today'>('prizes')
   const [storeOrigin,setStoreOrigin]=useState<'home'|'select-store'|'settings'>('home')
   const [storeName, setStoreName] = useState('')
@@ -224,17 +225,17 @@ function App() {
     }
   }
 
-  if (screen === 'store-today' && selectedStore) return <StoreToday store={selectedStore} onAdd={() => setScreen('prizes')} onFinish={() => setScreen('home')} onSelect={(prize) => { setSelectedPrize(prize); setPlayOrigin('store-today'); setScreen('play') }} />
+  if (screen === 'store-today' && selectedStore) return <StoreToday store={selectedStore} onAdd={() => setScreen('prizes')} onFinish={() => setScreen('home')} onSelect={(prize) => { setSelectedPrize(prize); setPlayOrigin('store-today'); setScreen('play') }} onOpenDetail={(visit,prizeId)=>{setSelectedVisit(visit);setSelectedVisitPrizeId(prizeId);setPrizeDetailOrigin('store-today');setScreen('prize-detail')}} />
 
   if (screen === 'play' && selectedStore && selectedPrize) {
     return <PlayRecorder store={selectedStore} prize={selectedPrize} onBack={() => setScreen(playOrigin)} onSaved={() => setScreen('store-today')} />
   }
 
   if (screen === 'visit-detail' && selectedVisit) {
-    return <VisitDetail visit={selectedVisit} onBack={() => setScreen(detailOrigin)} onOpenPrize={(id)=>{setSelectedVisitPrizeId(id);setScreen('prize-detail')}} />
+    return <VisitDetail visit={selectedVisit} onBack={() => setScreen(detailOrigin)} onOpenPrize={(id)=>{setSelectedVisitPrizeId(id);setPrizeDetailOrigin('visit-detail');setScreen('prize-detail')}} />
   }
 
-  if(screen==='prize-detail'&&selectedVisit&&selectedVisitPrizeId)return <PrizeVisitDetail visit={selectedVisit} prizeId={selectedVisitPrizeId} onBack={()=>setScreen('visit-detail')} onAdd={(prize)=>{const store=stores.find(item=>item.id===selectedVisit.storeId);if(!store)return;setSelectedStore(store);setSelectedPrize(prize);setPlayOrigin('prize-detail');setScreen('play')}} />
+  if(screen==='prize-detail'&&selectedVisit&&selectedVisitPrizeId)return <PrizeVisitDetail visit={selectedVisit} prizeId={selectedVisitPrizeId} onBack={()=>setScreen(prizeDetailOrigin)} onAdd={(prize)=>{const store=stores.find(item=>item.id===selectedVisit.storeId);if(!store)return;setSelectedStore(store);setSelectedPrize(prize);setPlayOrigin('prize-detail');setScreen('play')}} />
 
   if (screen === 'history-list') return <HistoryList onBack={() => setScreen('home')} onOpen={(visit) => { setSelectedVisit(visit); setDetailOrigin('history-list'); setScreen('visit-detail') }} />
   if (screen === 'store-stats') return <StoreStats onBack={() => setScreen('home')} />
