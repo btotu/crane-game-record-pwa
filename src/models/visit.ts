@@ -1,2 +1,2 @@
 export interface VisitSummary { id:string; storeId:string; storeName:string; storeImageDataUrl?:string; playDate:string; startedAt:string; totalSpent:number; estimatedPrizeValue:number; profit:number; acquiredCount:number; playCount:number; isApproximate:boolean }
-export interface VisitPlayDetail { id:string; prizeId:string; prizeName:string; prizeImageDataUrl?:string; category:string; amount:number; result:'獲得'|'撤退'|'アシスト獲得'; startedAt:string; estimatedValue:number; isApproximate:boolean }
+export interface VisitPlayDetail { id:string; prizeId:string; prizeName:string; prizeImageDataUrl?:string; category:string; amount:number; result:'獲得'|'撤退'|'アシスト獲得'; startedAt:string; estimatedValue:number; memo:string; isApproximate:boolean }
