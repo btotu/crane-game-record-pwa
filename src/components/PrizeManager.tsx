@@ -4,7 +4,6 @@ import { priceBasisOptions, prizeCategories, type PriceBasis, type Prize, type P
 import { prizeService } from '../services/prizeService'
 import { imageService } from '../services/imageService'
 import { todayKey } from '../services/playService'
-import { yahooProductService, type ProductCandidate } from '../services/yahooProductService'
 
 const BarcodeScanner = lazy(() => import('./BarcodeScanner').then(module => ({ default: module.BarcodeScanner })))
 
@@ -37,8 +36,6 @@ export function PrizeManager({ store, onBack, onSelectPrize, mode = 'select' }: 
   const [referenceName, setReferenceName] = useState('')
   const [referenceUrl, setReferenceUrl] = useState('')
   const [priceCheckedAt, setPriceCheckedAt] = useState(todayKey())
-  const [productCandidates, setProductCandidates] = useState<ProductCandidate[]>([])
-  const [isSearchingProducts, setIsSearchingProducts] = useState(false)
 
   const normalizedQuery = searchQuery.trim().toLocaleLowerCase('ja-JP')
   const filteredPrizes = prizes.filter(prize => {
@@ -59,7 +56,7 @@ export function PrizeManager({ store, onBack, onSelectPrize, mode = 'select' }: 
 
   const reload = async () => setPrizes(await prizeService.list())
   useEffect(() => { void prizeService.list().then(setPrizes).catch((e: unknown) => setError(errorText(e))) }, [])
-  const reset = () => { setName(''); setCategory('食品'); setPrice(''); setQuantity('1'); setPriceSource('user'); setUserEditedPrice(true); setPriceBasis('市販商品価格'); setManufacturer(''); setContentDescription(''); setEditing(null); setImageDataUrl(null); setJanCode(''); setReferenceName(''); setReferenceUrl(''); setPriceCheckedAt(todayKey()); setProductCandidates([]) }
+  const reset = () => { setName(''); setCategory('食品'); setPrice(''); setQuantity('1'); setPriceSource('user'); setUserEditedPrice(true); setPriceBasis('市販商品価格'); setManufacturer(''); setContentDescription(''); setEditing(null); setImageDataUrl(null); setJanCode(''); setReferenceName(''); setReferenceUrl(''); setPriceCheckedAt(todayKey()) }
   const submit = async (event: FormEvent) => {
     event.preventDefault(); if (saving) return; setSaving(true); setError('')
     try {
@@ -70,7 +67,7 @@ export function PrizeManager({ store, onBack, onSelectPrize, mode = 'select' }: 
       setFeedback(editing ? '景品を変更しました。' : '景品を登録しました。'); reset(); await reload(); setFormOpen(false); window.scrollTo(0, 0)
     } catch (e) { setError(errorText(e)) } finally { setSaving(false) }
   }
-  const startEdit = (prize: Prize) => { setFormOpen(true); setError(''); window.scrollTo(0, 0); const savedQuantity = prize.quantity ?? 1; setEditing(prize); setName(prize.name); setCategory(prize.category); setPrice(String(prize.unitPrice ?? Math.round(prize.estimatedPrice / savedQuantity))); setQuantity(String(savedQuantity)); setPriceSource(prize.priceSource ?? 'user'); setUserEditedPrice(prize.userEditedPrice ?? true); setPriceBasis(prize.priceBasis ?? (prize.category === 'フィギュア' || prize.category === 'ぬいぐるみ' ? 'プライズ品の市場相場' : 'その他の手入力')); setManufacturer(prize.manufacturer ?? ''); setContentDescription(prize.contentDescription ?? ''); setImageDataUrl(prize.imageDataUrl ?? null); setJanCode(prize.janCode ?? ''); setReferenceName(prize.priceReferenceName ?? ''); setReferenceUrl(prize.priceReferenceUrl ?? ''); setPriceCheckedAt(prize.priceCheckedAt ?? todayKey()); setProductCandidates([]); setFeedback('') }
+  const startEdit = (prize: Prize) => { setFormOpen(true); setError(''); window.scrollTo(0, 0); const savedQuantity = prize.quantity ?? 1; setEditing(prize); setName(prize.name); setCategory(prize.category); setPrice(String(prize.unitPrice ?? Math.round(prize.estimatedPrice / savedQuantity))); setQuantity(String(savedQuantity)); setPriceSource(prize.priceSource ?? 'user'); setUserEditedPrice(prize.userEditedPrice ?? true); setPriceBasis(prize.priceBasis ?? (prize.category === 'フィギュア' || prize.category === 'ぬいぐるみ' ? 'プライズ品の市場相場' : 'その他の手入力')); setManufacturer(prize.manufacturer ?? ''); setContentDescription(prize.contentDescription ?? ''); setImageDataUrl(prize.imageDataUrl ?? null); setJanCode(prize.janCode ?? ''); setReferenceName(prize.priceReferenceName ?? ''); setReferenceUrl(prize.priceReferenceUrl ?? ''); setPriceCheckedAt(prize.priceCheckedAt ?? todayKey()); setFeedback('') }
   const remove = async (prize: Prize) => { if (!confirm(`「${prize.name}」を削除しますか？`)) return; await prizeService.remove(prize.id); if (editing?.id === prize.id) reset(); setFeedback('景品を削除しました。'); await reload() }
   const selectImage = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]; event.target.value = ''; if (!file) return
@@ -81,24 +78,10 @@ export function PrizeManager({ store, onBack, onSelectPrize, mode = 'select' }: 
   const barcodeDetected = useCallback((rawCode: string) => {
     const code = rawCode.replace(/\D/g, '')
     setJanCode(code)
-    setProductCandidates([])
     setScannerOpen(false)
     setError('')
     setFeedback(`バーコード「${code}」を読み取りました。`)
   }, [])
-  const searchProducts = async () => {
-    try {
-      setIsSearchingProducts(true); setError(''); setFeedback('')
-      const candidates = await yahooProductService.searchByJan(janCode)
-      setProductCandidates(candidates)
-      if (candidates.length === 0) setFeedback('このJANコードの商品はYahoo!ショッピングで見つかりませんでした。手入力はそのまま利用できます。')
-    } catch (searchError) { setProductCandidates([]); setError(errorText(searchError)) }
-    finally { setIsSearchingProducts(false) }
-  }
-  const applyProduct = (candidate: ProductCandidate) => {
-    setName(candidate.name); setPrice(String(candidate.price)); setPriceSource('yahoo'); setUserEditedPrice(false); setPriceBasis('市販商品価格'); setReferenceName(`Yahoo!ショッピング / ${candidate.sellerName}`); setReferenceUrl(candidate.url); setPriceCheckedAt(todayKey()); setProductCandidates([]); setError(''); setFeedback('商品候補を反映しました。内容を確認してから保存してください。')
-  }
-
   return <div className="app-shell">
     <header className="page-header"><button className="back-button" type="button" onClick={() => { if (formOpen) { reset(); setFormOpen(false); setError(''); setFeedback(''); window.scrollTo(0, 0) } else onBack() }}>‹</button><div><p className="app-eyebrow">{managementMode ? 'PRIZE SETTINGS' : 'PRIZE SETUP'}</p><h1>{formOpen ? editing ? '景品を編集' : '景品を新規登録' : managementMode ? '景品の登録・編集' : '景品を選択'}</h1></div></header>
     <main className="store-main">
@@ -111,8 +94,7 @@ export function PrizeManager({ store, onBack, onSelectPrize, mode = 'select' }: 
           <div className="prize-image-editor">{imageDataUrl ? <img src={imageDataUrl} alt="保存予定の景品写真" /> : <div aria-hidden="true">景品写真なし</div>}<label className="image-select-button">{isProcessingImage ? '画像を処理中…' : '写真を撮影・選択'}<input type="file" accept="image/*" disabled={isProcessingImage} onChange={event => void selectImage(event)} /></label></div>
           {imageDataUrl && <button className="remove-image-button" type="button" onClick={() => setImageDataUrl(null)}>この景品写真を削除</button>}
           <label htmlFor="jan-code">JANコード（任意）</label><div className="barcode-input-row"><input id="jan-code" type="text" inputMode="numeric" value={janCode} onChange={e => setJanCode(e.target.value.replace(/\D/g, '').slice(0, 13))} placeholder="8桁または13桁" /><button type="button" onClick={() => setScannerOpen(true)}>カメラで読取</button></div>
-          <button className="product-search-button" type="button" disabled={isSearchingProducts || !/^(\d{8}|\d{13})$/.test(janCode)} onClick={() => void searchProducts()}>{isSearchingProducts ? 'Yahoo!ショッピングを検索中…' : 'JANコードから商品情報を検索'}</button>
-          {productCandidates.length > 0 && <section className="product-candidates"><div><strong>商品候補</strong><span>{productCandidates.length}件</span></div><ul>{productCandidates.map((candidate,index) => <li key={`${candidate.url}-${index}`}><div><strong>{candidate.name}</strong><span>{candidate.sellerName}</span><b>{candidate.price.toLocaleString()}円</b></div><button type="button" onClick={() => applyProduct(candidate)}>この候補を反映</button></li>)}</ul><p>商品情報提供：Yahoo!ショッピング</p></section>}
+          <p className="product-search-paused">JANコードの商品自動検索は、外部サーバー対応まで準備中です。コードの保存とカメラ読取は利用できます。</p>
           <div className="form-row"><div><label htmlFor="category">カテゴリ</label><select id="category" value={category} onChange={e => { const next = e.target.value as PrizeCategory; setCategory(next); setPriceBasis(next === 'フィギュア' || next === 'ぬいぐるみ' ? 'プライズ品の市場相場' : next === 'その他' ? 'その他の手入力' : '市販商品価格') }}>{prizeCategories.map(item => <option key={item}>{item}</option>)}</select></div>
           <div><label htmlFor="price">1個あたりの参考価格（円）</label><input id="price" type="number" inputMode="numeric" min="0" max="1000000" step="1" value={price} onChange={e => { setPrice(e.target.value); setPriceSource('user'); setUserEditedPrice(true) }} placeholder="0" /></div></div>
           <p className={`price-origin ${userEditedPrice ? 'edited' : 'automatic'}`}>{userEditedPrice ? 'ユーザー編集価格' : 'Yahoo!ショッピング取得価格'}</p>
