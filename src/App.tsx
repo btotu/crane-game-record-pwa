@@ -18,9 +18,10 @@ import { locationService, type CurrentPosition } from './services/locationServic
 import { imageService } from './services/imageService'
 import { nearbyStoreService, type NearbyStoreCandidate } from './services/nearbyStoreService'
 import { ProductApiSettings } from './components/ProductApiSettings'
+import { PlayInputSettings } from './components/PlayInputSettings'
 import './App.css'
 
-type Screen = 'store-today' | 'home' | 'stores' | 'select-store' | 'prizes' | 'prize-settings' | 'play' | 'visit-detail' | 'history-list' | 'prize-detail' | 'store-stats' | 'approximate' | 'settings' | 'backup' | 'product-api-settings'
+type Screen = 'store-today' | 'home' | 'stores' | 'select-store' | 'prizes' | 'prize-settings' | 'play' | 'visit-detail' | 'history-list' | 'prize-detail' | 'store-stats' | 'approximate' | 'settings' | 'backup' | 'product-api-settings' | 'play-input-settings'
 
 const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : '処理中に問題が発生しました。'
@@ -240,10 +241,11 @@ function App() {
   if (screen === 'history-list') return <HistoryList onBack={() => setScreen('home')} onOpen={(visit) => { setSelectedVisit(visit); setDetailOrigin('history-list'); setScreen('visit-detail') }} />
   if (screen === 'store-stats') return <StoreStats onBack={() => setScreen('home')} />
   if (screen === 'approximate') return <ApproximateEntry onBack={() => setScreen('home')} />
-  if (screen === 'settings') return <SettingsMenu onBack={() => setScreen('home')} onStores={() => openStores('settings')} onPrizes={() => setScreen('prize-settings')} onProductApi={() => setScreen('product-api-settings')} onBackup={() => setScreen('backup')} />
+  if (screen === 'settings') return <SettingsMenu onBack={() => setScreen('home')} onStores={() => openStores('settings')} onPrizes={() => setScreen('prize-settings')} onPlayInput={() => setScreen('play-input-settings')} onProductApi={() => setScreen('product-api-settings')} onBackup={() => setScreen('backup')} />
   if (screen === 'backup') return <BackupSettings onBack={() => setScreen('settings')} />
   if (screen === 'product-api-settings') return <ProductApiSettings onBack={() => setScreen('settings')} />
   if (screen === 'prize-settings') return <PrizeManager mode="manage" onBack={() => setScreen('settings')} />
+  if (screen === 'play-input-settings') return <PlayInputSettings onBack={() => setScreen('settings')} />
 
   if (screen === 'prizes' && selectedStore) {
     return <PrizeManager store={selectedStore} onBack={() => setScreen('store-today')} onSelectPrize={(prize) => { setSelectedPrize(prize); setPlayOrigin('prizes'); setScreen('play') }} />
