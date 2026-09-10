@@ -7,7 +7,7 @@ import { settingRepository } from '../repositories/settingRepository'
 
 const LAST_BACKUP_KEY = 'last-backup-at'
 const DEVICE_NAME_KEY = 'backup-device-name'
-const isSafeSettingKey = (key: string) => key === 'play-quick-amounts' || key.startsWith('visit-budget:')
+const isSafeSettingKey = (key: string) => key === 'play-quick-amounts' || key.startsWith('visit-budget:') || key.startsWith('monthly-budget:')
 
 interface BackupDataV1 { format: 'crane-record-backup'; version: 1; exportedAt: string; stores: Store[]; prizes: Prize[]; plays: PlayRecord[] }
 interface BackupDataV2 { format: 'crane-record-backup'; version: 2; exportedAt: string; deviceName?: string; stores: Store[]; prizes: Prize[]; plays: PlayRecord[]; settings: AppSetting[] }
