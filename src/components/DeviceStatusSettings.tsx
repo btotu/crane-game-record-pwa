@@ -17,6 +17,9 @@ const formatBytes = (bytes: number) => {
 export function DeviceStatusSettings({ onBack }: { onBack: () => void }) {
   const [items, setItems] = useState<StatusItem[]>([])
   const [checking, setChecking] = useState(true)
+  const [persistentStorage, setPersistentStorage] = useState<boolean | null>(null)
+  const [persistenceSupported, setPersistenceSupported] = useState(false)
+  const [persistenceMessage, setPersistenceMessage] = useState('')
 
   const check = useCallback(async () => {
     setChecking(true)
@@ -76,9 +79,38 @@ export function DeviceStatusSettings({ onBack }: { onBack: () => void }) {
       next.push({ label: '端末内の保存領域', detail: 'このブラウザでは容量を確認できません', state: 'unknown' })
     }
 
+    const canCheckPersistence = Boolean(navigator.storage?.persisted)
+    setPersistenceSupported(Boolean(navigator.storage?.persist))
+    if (canCheckPersistence) {
+      try {
+        const persisted = await navigator.storage.persisted()
+        setPersistentStorage(persisted)
+        next.push({ label: '保存データの保護', detail: persisted ? '永続的な保存領域として保護されています' : '通常のブラウザ保存領域を使用しています', state: persisted ? 'ok' : 'attention' })
+      } catch {
+        setPersistentStorage(null)
+        next.push({ label: '保存データの保護', detail: '状態を確認できませんでした', state: 'unknown' })
+      }
+    } else {
+      setPersistentStorage(null)
+      next.push({ label: '保存データの保護', detail: 'このブラウザでは状態を確認できません', state: 'unknown' })
+    }
+
     setItems(next)
     setChecking(false)
   }, [])
+
+  const requestPersistence = async () => {
+    if (!navigator.storage?.persist) return
+    try {
+      setChecking(true)
+      const granted = await navigator.storage.persist()
+      setPersistenceMessage(granted ? '保存データの保護が有効になりました。' : 'ブラウザの判断により保護は有効になりませんでした。通常の保存とバックアップは引き続き利用できます。')
+      await check()
+    } catch {
+      setPersistenceMessage('保存データの保護を申請できませんでした。通常の保存機能には影響ありません。')
+      setChecking(false)
+    }
+  }
 
   useEffect(() => {
     const timer = window.setTimeout(() => { void check() }, 0)
@@ -90,8 +122,10 @@ export function DeviceStatusSettings({ onBack }: { onBack: () => void }) {
     <main className="store-main">
       <p className="step-description">この画面では現在の状態だけを確認します。カメラや位置情報の許可画面は表示しません。</p>
       {checking ? <p className="list-empty">端末の状態を確認しています…</p> : <ul className="device-status-list">{items.map(item => <li key={item.label}><span className={`device-status-mark ${item.state}`} aria-hidden="true">{item.state === 'ok' ? '✓' : item.state === 'attention' ? '!' : 'i'}</span><div><strong>{item.label}</strong><small>{item.detail}</small></div></li>)}</ul>}
+      {!checking && persistenceSupported && persistentStorage === false && <section className="persistence-action"><strong>保存データを保護する</strong><p>ブラウザへ永続的な保存領域を申請し、自動的なデータ整理の対象になりにくくします。</p><button type="button" onClick={() => void requestPersistence()}>保護を申請</button></section>}
+      {persistenceMessage && <p className="feedback success-message" role="status">{persistenceMessage}</p>}
       <button className="secondary-wide-button" type="button" disabled={checking} onClick={() => void check()}>状態を再確認</button>
-      <p className="device-status-note">「ブロックされています」と表示された場合は、Chromeのアドレス欄付近にあるサイト設定から権限を変更できます。</p>
+      <p className="device-status-note">「ブロックされています」と表示された場合は、Chromeのアドレス欄付近にあるサイト設定から権限を変更できます。保存データを保護した場合も、端末故障やブラウザデータの手動削除に備えてバックアップは継続してください。</p>
     </main>
   </div>
 }
