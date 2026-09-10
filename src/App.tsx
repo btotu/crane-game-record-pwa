@@ -11,6 +11,7 @@ import type { VisitSummary } from './models/visit'
 import { HistoryList } from './components/HistoryList'
 import { PrizeVisitDetail } from './components/PrizeVisitDetail'
 import { StoreStats } from './components/StoreStats'
+import { PrizeStats } from './components/PrizeStats'
 import { ApproximateEntry } from './components/ApproximateEntry'
 import { BackupSettings } from './components/BackupSettings'
 import { SettingsMenu } from './components/SettingsMenu'
@@ -22,7 +23,7 @@ import { PlayInputSettings } from './components/PlayInputSettings'
 import { DeviceStatusSettings } from './components/DeviceStatusSettings'
 import './App.css'
 
-type Screen = 'store-today' | 'home' | 'stores' | 'select-store' | 'prizes' | 'prize-settings' | 'play' | 'visit-detail' | 'history-list' | 'prize-detail' | 'store-stats' | 'approximate' | 'settings' | 'backup' | 'product-api-settings' | 'play-input-settings' | 'device-status-settings'
+type Screen = 'store-today' | 'home' | 'stores' | 'select-store' | 'prizes' | 'prize-settings' | 'play' | 'visit-detail' | 'history-list' | 'prize-detail' | 'store-stats' | 'prize-stats' | 'approximate' | 'settings' | 'backup' | 'product-api-settings' | 'play-input-settings' | 'device-status-settings'
 
 const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : '処理中に問題が発生しました。'
@@ -240,7 +241,8 @@ function App() {
   if(screen==='prize-detail'&&selectedVisit&&selectedVisitPrizeId)return <PrizeVisitDetail visit={selectedVisit} prizeId={selectedVisitPrizeId} onBack={()=>setScreen(prizeDetailOrigin)} onAdd={(prize)=>{const store=stores.find(item=>item.id===selectedVisit.storeId);if(!store)return;setSelectedStore(store);setSelectedPrize(prize);setPlayOrigin('prize-detail');setScreen('play')}} />
 
   if (screen === 'history-list') return <HistoryList onBack={() => setScreen('home')} onOpen={(visit) => { setSelectedVisit(visit); setDetailOrigin('history-list'); setScreen('visit-detail') }} />
-  if (screen === 'store-stats') return <StoreStats onBack={() => setScreen('home')} />
+  if (screen === 'store-stats') return <StoreStats onBack={() => setScreen('home')} onOpenPrizes={() => setScreen('prize-stats')} />
+  if (screen === 'prize-stats') return <PrizeStats onBack={() => setScreen('home')} onOpenStores={() => setScreen('store-stats')} />
   if (screen === 'approximate') return <ApproximateEntry onBack={() => setScreen('home')} />
   if (screen === 'settings') return <SettingsMenu onBack={() => setScreen('home')} onStores={() => openStores('settings')} onPrizes={() => setScreen('prize-settings')} onPlayInput={() => setScreen('play-input-settings')} onDeviceStatus={() => setScreen('device-status-settings')} onProductApi={() => setScreen('product-api-settings')} onBackup={() => setScreen('backup')} />
   if (screen === 'backup') return <BackupSettings onBack={() => setScreen('settings')} />
@@ -356,7 +358,7 @@ function App() {
         <button type="button" onClick={openPlay}><span className="action-icon" aria-hidden="true">＋</span><span>プレイを記録</span></button>
         <button type="button" onClick={() => setScreen('approximate')}><span className="action-icon" aria-hidden="true">≒</span><span>うろ覚え記入</span></button>
         <button type="button" onClick={() => setScreen('history-list')}><span className="action-icon" aria-hidden="true">☷</span><span>履歴一覧</span></button>
-        <button type="button" onClick={() => setScreen('store-stats')}><span className="action-icon" aria-hidden="true">▥</span><span>店舗戦績</span></button>
+        <button type="button" onClick={() => setScreen('store-stats')}><span className="action-icon" aria-hidden="true">▥</span><span>戦績</span></button>
       </nav>
     </div>
   )
