@@ -7,7 +7,7 @@ import { prizeService } from '../services/prizeService'
 import { storeService } from '../services/storeService'
 import { todayKey } from '../services/playService'
 
-interface Props { onBack: () => void; onOpenStores: () => void }
+interface Props { onBack: () => void; onOpenStores: () => void; onOpenMonthly: () => void }
 interface Stat { id: string; name: string; category: string; imageDataUrl?: string; spent: number; value: number; wins: number; withdrawals: number; plays: number; stores: Set<string>; lastAt: string }
 type Period = 'this-month' | 'last-month' | 'this-year' | 'all' | 'custom'
 type SortOrder = 'recent' | 'spent' | 'profit' | 'loss' | 'win-rate'
@@ -24,7 +24,7 @@ const monthEnd = (start: string) => {
   return `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`
 }
 
-export function PrizeStats({ onBack, onOpenStores }: Props) {
+export function PrizeStats({ onBack, onOpenStores, onOpenMonthly }: Props) {
   const [plays, setPlays] = useState<PlayRecord[]>([])
   const [prizes, setPrizes] = useState<Prize[]>([])
   const [stores, setStores] = useState<Store[]>([])
@@ -85,7 +85,7 @@ export function PrizeStats({ onBack, onOpenStores }: Props) {
   const totalProfit = totalValue - totalSpent
 
   return <div className="app-shell"><header className="page-header"><button className="back-button" type="button" onClick={onBack}>‹</button><div><p className="app-eyebrow">PLAY RESULTS</p><h1>戦績</h1></div></header><main className="store-main">
-    <nav className="stats-tabs" aria-label="戦績の種類"><button type="button" onClick={onOpenStores}>店舗別</button><button className="active" type="button" aria-current="page">景品別</button></nav>
+    <nav className="stats-tabs stats-tabs-three" aria-label="戦績の種類"><button type="button" onClick={onOpenStores}>店舗別</button><button className="active" type="button" aria-current="page">景品別</button><button type="button" onClick={onOpenMonthly}>月別推移</button></nav>
     <section className="stats-period"><label htmlFor="prize-stats-period">集計期間</label><select id="prize-stats-period" value={period} onChange={event => setPeriod(event.target.value as Period)}><option value="this-month">今月</option><option value="last-month">先月</option><option value="this-year">今年</option><option value="all">全期間</option><option value="custom">期間を指定</option></select>{period === 'custom' && <div className="stats-date-range"><label>開始日<input type="date" max={today} value={customFrom} onChange={event => setCustomFrom(event.target.value)} /></label><span>～</span><label>終了日<input type="date" max={today} value={customTo} onChange={event => setCustomTo(event.target.value)} /></label></div>}{periodInvalid && <p className="feedback error-message" role="alert">開始日は終了日以前の日付にしてください。</p>}</section>
     {!loading && !error && !periodInvalid && <section className="stats-overall"><div><span>景品</span><strong>{stats.length}種類</strong></div><div><span>総使用額</span><strong>{yen(totalSpent)}</strong></div><div><span>総獲得数</span><strong>{totalWins}個</strong></div><div><span>総損益</span><strong className={totalProfit >= 0 ? 'positive' : 'negative'}>{totalProfit >= 0 ? '+' : ''}{yen(totalProfit)}</strong></div></section>}
     {!loading && !error && !periodInvalid && <section className="stats-filter-panel" aria-label="景品戦績の絞り込み"><label>景品名<input type="search" value={searchQuery} onChange={event => setSearchQuery(event.target.value)} placeholder="景品名で検索" /></label><label>カテゴリ<select value={category} onChange={event => setCategory(event.target.value)}><option value="すべて">すべて</option>{prizeCategories.map(item => <option key={item} value={item}>{item}</option>)}</select></label><label>並べ替え<select value={sortOrder} onChange={event => setSortOrder(event.target.value as SortOrder)}><option value="recent">最近プレイした順</option><option value="spent">使用額が多い順</option><option value="profit">利益が大きい順</option><option value="loss">損失が大きい順</option><option value="win-rate">獲得率が高い順</option></select></label>{filterActive && <button type="button" onClick={() => { setSearchQuery(''); setCategory('すべて') }}>絞り込みを解除</button>}</section>}

@@ -3,7 +3,7 @@ import type { VisitSummary } from '../models/visit'
 import { visitService } from '../services/visitService'
 import { todayKey } from '../services/playService'
 
-interface Props { onBack: () => void; onOpenPrizes: () => void }
+interface Props { onBack: () => void; onOpenPrizes: () => void; onOpenMonthly: () => void }
 interface Stat { id: string; name: string; spent: number; profit: number; wins: number; plays: number; visits: number; lastAt: string }
 type Period = 'this-month' | 'last-month' | 'this-year' | 'all' | 'custom'
 type SortOrder = 'recent' | 'spent' | 'profit' | 'loss' | 'withdrawal-rate'
@@ -20,7 +20,7 @@ const monthEnd = (start: string) => {
   return `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`
 }
 
-export function StoreStats({ onBack, onOpenPrizes }: Props) {
+export function StoreStats({ onBack, onOpenPrizes, onOpenMonthly }: Props) {
   const [visits, setVisits] = useState<VisitSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -68,7 +68,7 @@ export function StoreStats({ onBack, onOpenPrizes }: Props) {
   const totalProfit = visibleVisits.reduce((sum, visit) => sum + visit.profit, 0)
 
   return <div className="app-shell"><header className="page-header"><button className="back-button" type="button" onClick={onBack}>‹</button><div><p className="app-eyebrow">PLAY RESULTS</p><h1>戦績</h1></div></header><main className="store-main">
-    <nav className="stats-tabs" aria-label="戦績の種類"><button className="active" type="button" aria-current="page">店舗別</button><button type="button" onClick={onOpenPrizes}>景品別</button></nav>
+    <nav className="stats-tabs stats-tabs-three" aria-label="戦績の種類"><button className="active" type="button" aria-current="page">店舗別</button><button type="button" onClick={onOpenPrizes}>景品別</button><button type="button" onClick={onOpenMonthly}>月別推移</button></nav>
     <section className="stats-period"><label htmlFor="stats-period">集計期間</label><select id="stats-period" value={period} onChange={event => setPeriod(event.target.value as Period)}><option value="this-month">今月</option><option value="last-month">先月</option><option value="this-year">今年</option><option value="all">全期間</option><option value="custom">期間を指定</option></select>{period === 'custom' && <div className="stats-date-range"><label>開始日<input type="date" max={today} value={customFrom} onChange={event => setCustomFrom(event.target.value)} /></label><span>～</span><label>終了日<input type="date" max={today} value={customTo} onChange={event => setCustomTo(event.target.value)} /></label></div>}{periodInvalid && <p className="feedback error-message" role="alert">開始日は終了日以前の日付にしてください。</p>}</section>
     {!loading && !error && !periodInvalid && <section className="stats-overall"><div><span>来店</span><strong>{visibleVisits.length}回</strong></div><div><span>総使用額</span><strong>{yen(totalSpent)}</strong></div><div><span>総獲得数</span><strong>{totalWins}個</strong></div><div><span>総損益</span><strong className={totalProfit >= 0 ? 'positive' : 'negative'}>{totalProfit >= 0 ? '+' : ''}{yen(totalProfit)}</strong></div></section>}
     {!loading && !error && !periodInvalid && <section className="stats-filter-panel store-stats-filter" aria-label="店舗戦績の検索と並べ替え"><label>店舗名<input type="search" value={searchQuery} onChange={event => setSearchQuery(event.target.value)} placeholder="店舗名で検索" /></label><label>並べ替え<select value={sortOrder} onChange={event => setSortOrder(event.target.value as SortOrder)}><option value="recent">最近来店した順</option><option value="spent">使用額が多い順</option><option value="profit">利益が大きい順</option><option value="loss">損失が大きい順</option><option value="withdrawal-rate">撤退率が高い順</option></select></label>{normalizedQuery && <button type="button" onClick={() => setSearchQuery('')}>検索を解除</button>}</section>}

@@ -12,6 +12,7 @@ import { HistoryList } from './components/HistoryList'
 import { PrizeVisitDetail } from './components/PrizeVisitDetail'
 import { StoreStats } from './components/StoreStats'
 import { PrizeStats } from './components/PrizeStats'
+import { MonthlyStats } from './components/MonthlyStats'
 import { ApproximateEntry } from './components/ApproximateEntry'
 import { BackupSettings } from './components/BackupSettings'
 import { SettingsMenu } from './components/SettingsMenu'
@@ -23,7 +24,7 @@ import { PlayInputSettings } from './components/PlayInputSettings'
 import { DeviceStatusSettings } from './components/DeviceStatusSettings'
 import './App.css'
 
-type Screen = 'store-today' | 'home' | 'stores' | 'select-store' | 'prizes' | 'prize-settings' | 'play' | 'visit-detail' | 'history-list' | 'prize-detail' | 'store-stats' | 'prize-stats' | 'approximate' | 'settings' | 'backup' | 'product-api-settings' | 'play-input-settings' | 'device-status-settings'
+type Screen = 'store-today' | 'home' | 'stores' | 'select-store' | 'prizes' | 'prize-settings' | 'play' | 'visit-detail' | 'history-list' | 'prize-detail' | 'store-stats' | 'prize-stats' | 'monthly-stats' | 'approximate' | 'settings' | 'backup' | 'product-api-settings' | 'play-input-settings' | 'device-status-settings'
 
 const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : '処理中に問題が発生しました。'
@@ -241,8 +242,9 @@ function App() {
   if(screen==='prize-detail'&&selectedVisit&&selectedVisitPrizeId)return <PrizeVisitDetail visit={selectedVisit} prizeId={selectedVisitPrizeId} onBack={()=>setScreen(prizeDetailOrigin)} onAdd={(prize)=>{const store=stores.find(item=>item.id===selectedVisit.storeId);if(!store)return;setSelectedStore(store);setSelectedPrize(prize);setPlayOrigin('prize-detail');setScreen('play')}} />
 
   if (screen === 'history-list') return <HistoryList onBack={() => setScreen('home')} onOpen={(visit) => { setSelectedVisit(visit); setDetailOrigin('history-list'); setScreen('visit-detail') }} />
-  if (screen === 'store-stats') return <StoreStats onBack={() => setScreen('home')} onOpenPrizes={() => setScreen('prize-stats')} />
-  if (screen === 'prize-stats') return <PrizeStats onBack={() => setScreen('home')} onOpenStores={() => setScreen('store-stats')} />
+  if (screen === 'store-stats') return <StoreStats onBack={() => setScreen('home')} onOpenPrizes={() => setScreen('prize-stats')} onOpenMonthly={() => setScreen('monthly-stats')} />
+  if (screen === 'prize-stats') return <PrizeStats onBack={() => setScreen('home')} onOpenStores={() => setScreen('store-stats')} onOpenMonthly={() => setScreen('monthly-stats')} />
+  if (screen === 'monthly-stats') return <MonthlyStats onBack={() => setScreen('home')} onOpenStores={() => setScreen('store-stats')} onOpenPrizes={() => setScreen('prize-stats')} />
   if (screen === 'approximate') return <ApproximateEntry onBack={() => setScreen('home')} />
   if (screen === 'settings') return <SettingsMenu onBack={() => setScreen('home')} onStores={() => openStores('settings')} onPrizes={() => setScreen('prize-settings')} onPlayInput={() => setScreen('play-input-settings')} onDeviceStatus={() => setScreen('device-status-settings')} onProductApi={() => setScreen('product-api-settings')} onBackup={() => setScreen('backup')} />
   if (screen === 'backup') return <BackupSettings onBack={() => setScreen('settings')} />
