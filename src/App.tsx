@@ -13,6 +13,7 @@ import { PrizeVisitDetail } from './components/PrizeVisitDetail'
 import { StoreStats } from './components/StoreStats'
 import { PrizeStats } from './components/PrizeStats'
 import { MonthlyStats } from './components/MonthlyStats'
+import { HomeMonthlyBudget } from './components/HomeMonthlyBudget'
 import { ApproximateEntry } from './components/ApproximateEntry'
 import { BackupSettings } from './components/BackupSettings'
 import { SettingsMenu } from './components/SettingsMenu'
@@ -354,6 +355,7 @@ function App() {
         </button>
       </header>
       <main className="app-main">
+        <HomeMonthlyBudget onOpen={() => setScreen('monthly-stats')} />
         <HomeHistory onStart={openPlay} onOpen={(visit) => { setSelectedVisit(visit); setDetailOrigin('home'); setScreen('visit-detail') }} />
       </main>
       <nav className="bottom-actions" aria-label="主な操作">
