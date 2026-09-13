@@ -57,6 +57,7 @@ export function PrizeManager({ store, onBack, onSelectPrize, mode = 'select' }: 
     ? prizes.filter(prize => prize.id !== editing?.id && normalizeName(prize.name).includes(normalizedPrizeName)).slice(0, 5)
     : []
   const exactNameMatch = similarNamePrizes.some(prize => normalizeName(prize.name) === normalizedPrizeName)
+  const duplicateJanPrize = janCode.length >= 8 ? prizes.find(prize => prize.id !== editing?.id && prize.janCode === janCode) : undefined
   const managementMode = mode === 'manage'
   const storePlays = store ? plays.filter(play => play.storeId === store.id) : plays
   const rankingSource = storePlays.length > 0 ? storePlays : plays
@@ -82,7 +83,10 @@ export function PrizeManager({ store, onBack, onSelectPrize, mode = 'select' }: 
     reset(); setFormOpen(false); setError(''); setFeedback(''); window.scrollTo(0, 0)
   }
   const submit = async (event: FormEvent) => {
-    event.preventDefault(); if (saveLock.current) return; saveLock.current = true; setSaving(true); setError('')
+    event.preventDefault(); if (saveLock.current) return
+    const duplicateReasons = [exactNameMatch ? '同じ景品名' : '', duplicateJanPrize ? `同じJANコード（${duplicateJanPrize.name}）` : ''].filter(Boolean)
+    if (duplicateReasons.length > 0 && !confirm(`${duplicateReasons.join('と')}が登録済みです。それでも別の景品として保存しますか？`)) return
+    saveLock.current = true; setSaving(true); setError('')
     try {
       const unitPrice = Number(price || 0)
       const itemQuantity = Number(quantity)
@@ -118,6 +122,7 @@ export function PrizeManager({ store, onBack, onSelectPrize, mode = 'select' }: 
           <div className="prize-image-editor">{imageDataUrl ? <img src={imageDataUrl} alt="保存予定の景品写真" /> : <div aria-hidden="true">景品写真なし</div>}<label className="image-select-button">{isProcessingImage ? '画像を処理中…' : '写真を撮影・選択'}<input type="file" accept="image/*" disabled={isProcessingImage} onChange={event => void selectImage(event)} /></label></div>
           {imageDataUrl && <button className="remove-image-button" type="button" onClick={() => setImageDataUrl(null)}>この景品写真を削除</button>}
           <label htmlFor="jan-code">JANコード（任意）</label><div className="barcode-input-row"><input id="jan-code" type="text" inputMode="numeric" value={janCode} onChange={e => setJanCode(e.target.value.replace(/\D/g, '').slice(0, 13))} placeholder="8桁または13桁" /><button type="button" onClick={() => setScannerOpen(true)}>カメラで読取</button></div>
+          {duplicateJanPrize && <aside className="prize-name-suggestions exact-match" aria-live="polite"><strong>同じJANコードの景品が登録されています</strong><ul><li><span>{duplicateJanPrize.name}</span><small>{duplicateJanPrize.category}{duplicateJanPrize.manufacturer ? `・${duplicateJanPrize.manufacturer}` : ''}</small></li></ul><p>同じ商品であれば、新規登録せず既存の景品を利用できます。</p></aside>}
           <p className="product-search-paused">JANコードの商品自動検索は、外部サーバー対応まで準備中です。コードの保存とカメラ読取は利用できます。</p>
           <div className="form-row"><div><label htmlFor="category">カテゴリ</label><select id="category" value={category} onChange={e => { const next = e.target.value as PrizeCategory; setCategory(next); setPriceBasis(next === 'フィギュア' || next === 'ぬいぐるみ' ? 'プライズ品の市場相場' : next === 'その他' ? 'その他の手入力' : '市販商品価格') }}>{prizeCategories.map(item => <option key={item}>{item}</option>)}</select></div>
           <div><label htmlFor="price">1個あたりの参考価格（円）</label><input id="price" type="number" inputMode="numeric" min="0" max="1000000" step="1" value={price} onChange={e => { setPrice(e.target.value); setPriceSource('user'); setUserEditedPrice(true) }} placeholder="0" /></div></div>

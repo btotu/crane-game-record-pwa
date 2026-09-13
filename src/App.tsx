@@ -30,6 +30,7 @@ type Screen = 'store-today' | 'home' | 'stores' | 'select-store' | 'prizes' | 'p
 
 const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : '処理中に問題が発生しました。'
+const normalizeDuplicateName = (value: string) => value.trim().replace(/[\s　]+/g, '').toLocaleLowerCase('ja-JP')
 
 function App() {
   const [screen, setScreen] = useState<Screen>('home')
@@ -123,6 +124,8 @@ function App() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    const duplicateStore = stores.find(store => store.id !== editingStore?.id && normalizeDuplicateName(store.name) === normalizeDuplicateName(storeName) && normalizeDuplicateName(storeName).length > 0)
+    if (duplicateStore && !window.confirm(`同じ店舗名「${duplicateStore.name}」がすでに登録されています。別の店舗として保存しますか？`)) return
     try {
       setIsSaving(true)
       setError('')
@@ -314,6 +317,7 @@ function App() {
             <form onSubmit={handleSubmit}>
               <label htmlFor="store-name">店舗名</label>
               <input id="store-name" name="storeName" type="text" value={storeName} onChange={(event) => setStoreName(event.target.value)} maxLength={80} placeholder="例：GiGO ○○店" autoComplete="off" />
+              {stores.some(store => store.id !== editingStore?.id && normalizeDuplicateName(store.name) === normalizeDuplicateName(storeName) && normalizeDuplicateName(storeName).length > 0) && <aside className="duplicate-store-warning" aria-live="polite"><strong>同じ名前の店舗が登録されています</strong><span>既存の店舗を利用する場合は、新しく登録する必要はありません。</span></aside>}
               <div className="store-image-editor">
                 {storeImageDataUrl ? <img src={storeImageDataUrl} alt="保存予定の店舗画像" /> : <div aria-hidden="true">店舗画像なし</div>}
                 <label className="image-select-button">{isProcessingImage ? '画像を処理中…' : '写真を撮影・選択'}<input type="file" accept="image/*" disabled={isProcessingImage} onChange={event => void selectStoreImage(event)} /></label>
