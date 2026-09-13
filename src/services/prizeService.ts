@@ -26,6 +26,7 @@ const validate = (input: PrizeInput) => {
 
 export const prizeService = {
   list: prizeRepository.getAll,
+  async listActive(){return (await prizeRepository.getAll()).filter(prize=>!prize.isArchived)},
   create(input: PrizeInput) { validate(input); return prizeRepository.create(input) },
   update(id: string, input: PrizeInput) { validate(input); return prizeRepository.update(id, input) },
   async remove(id: string) {
@@ -33,4 +34,5 @@ export const prizeService = {
     if (playCount > 0) throw new Error(`この景品には${playCount}件のプレイ記録があるため削除できません。景品名や価格の変更は「編集」を使用してください。`)
     return prizeRepository.remove(id)
   },
+  setArchived:(id:string,isArchived:boolean)=>prizeRepository.setArchived(id,isArchived),
 }

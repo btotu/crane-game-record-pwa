@@ -42,4 +42,8 @@ export const storeRepository = {
   async remove(id: string): Promise<void> {
     await database.stores.delete(id)
   },
+
+  async setArchived(id:string,isArchived:boolean):Promise<void>{
+    await database.stores.update(id,{isArchived,updatedAt:new Date().toISOString()})
+  },
 }

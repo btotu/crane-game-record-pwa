@@ -65,6 +65,7 @@ button:focus-visible { outline: 3px solid rgba(224,115,42,.32); outline-offset: 
 .store-actions { display: flex; gap: .3rem; }
 .store-actions button { padding: .48rem .55rem; color: var(--color-text-muted); font-size: .72rem; font-weight: 700; background: #fff; border: 1px solid var(--color-border); border-radius: .65rem; }
 .store-actions .delete-button { color: #a4433b; }
+.archived-item{opacity:.68;background:#f4f0ea!important}.archive-badge{display:inline-block;margin-left:.4rem;padding:.14rem .35rem;color:#735f51;font-size:.58rem;font-weight:800;background:#e5ddd4;border-radius:999px;vertical-align:middle}.store-info strong>.archive-badge{display:inline-block}
 
 @media (max-width: 390px) {
   .store-list li { align-items: flex-start; flex-wrap: wrap; }

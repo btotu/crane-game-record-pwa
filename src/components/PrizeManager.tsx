@@ -42,8 +42,10 @@ export function PrizeManager({ store, onBack, onSelectPrize, mode = 'select' }: 
   const [quickMode, setQuickMode] = useState<'recent' | 'frequent'>('recent')
   const saveLock = useRef(false)
 
+  const managementMode = mode === 'manage'
   const normalizedQuery = searchQuery.trim().toLocaleLowerCase('ja-JP')
-  const filteredPrizes = prizes.filter(prize => {
+  const availablePrizes=managementMode?prizes:prizes.filter(prize=>!prize.isArchived)
+  const filteredPrizes = availablePrizes.filter(prize => {
     const categoryMatches = categoryFilter === 'すべて' || prize.category === categoryFilter
     const searchTarget = [prize.name, prize.manufacturer, prize.contentDescription, prize.janCode]
       .filter(Boolean)
@@ -58,10 +60,9 @@ export function PrizeManager({ store, onBack, onSelectPrize, mode = 'select' }: 
     : []
   const exactNameMatch = similarNamePrizes.some(prize => normalizeName(prize.name) === normalizedPrizeName)
   const duplicateJanPrize = janCode.length >= 8 ? prizes.find(prize => prize.id !== editing?.id && prize.janCode === janCode) : undefined
-  const managementMode = mode === 'manage'
   const storePlays = store ? plays.filter(play => play.storeId === store.id) : plays
   const rankingSource = storePlays.length > 0 ? storePlays : plays
-  const prizeMap = new Map(prizes.map(prize => [prize.id, prize]))
+  const prizeMap = new Map(availablePrizes.map(prize => [prize.id, prize]))
   const recentPrizes = [...rankingSource].sort((a, b) => b.startedAt.localeCompare(a.startedAt)).reduce<Prize[]>((items, play) => {
     const prize = prizeMap.get(play.prizeId)
     if (prize && !items.some(item => item.id === prize.id) && items.length < 4) items.push(prize)
@@ -97,6 +98,7 @@ export function PrizeManager({ store, onBack, onSelectPrize, mode = 'select' }: 
   }
   const startEdit = (prize: Prize) => { setFormOpen(true); setError(''); window.scrollTo(0, 0); const savedQuantity = prize.quantity ?? 1; setEditing(prize); setName(prize.name); setCategory(prize.category); setPrice(String(prize.unitPrice ?? Math.round(prize.estimatedPrice / savedQuantity))); setQuantity(String(savedQuantity)); setPriceSource(prize.priceSource ?? 'user'); setUserEditedPrice(prize.userEditedPrice ?? true); setPriceBasis(prize.priceBasis ?? (prize.category === 'フィギュア' || prize.category === 'ぬいぐるみ' ? 'プライズ品の市場相場' : 'その他の手入力')); setManufacturer(prize.manufacturer ?? ''); setContentDescription(prize.contentDescription ?? ''); setImageDataUrl(prize.imageDataUrl ?? null); setJanCode(prize.janCode ?? ''); setReferenceName(prize.priceReferenceName ?? ''); setReferenceUrl(prize.priceReferenceUrl ?? ''); setPriceCheckedAt(prize.priceCheckedAt ?? todayKey()); setFeedback('') }
   const remove = async (prize: Prize) => { if (!confirm(`「${prize.name}」を削除しますか？`)) return; try { setError(''); await prizeService.remove(prize.id); if (editing?.id === prize.id) reset(); setFeedback('景品を削除しました。'); await reload() } catch (e) { setFeedback(''); setError(errorText(e)) } }
+  const toggleArchived=async(prize:Prize)=>{try{setError('');await prizeService.setArchived(prize.id,!prize.isArchived);setFeedback(prize.isArchived?'景品を利用中に戻しました。':'景品を利用停止にしました。過去の履歴は残ります。');await reload()}catch(e){setFeedback('');setError(errorText(e))}}
   const selectImage = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]; event.target.value = ''; if (!file) return
     try { setIsProcessingImage(true); setError(''); setImageDataUrl(await imageService.compressPrizeImage(file)); setFeedback('写真を準備しました。保存ボタンを押すと登録されます。') }
@@ -145,8 +147,8 @@ export function PrizeManager({ store, onBack, onSelectPrize, mode = 'select' }: 
         <select id="prize-category-filter" value={categoryFilter} onChange={event => setCategoryFilter(event.target.value as 'すべて' | PrizeCategory)}><option value="すべて">すべてのカテゴリ</option>{prizeCategories.map(item => <option key={item} value={item}>{item}</option>)}</select>
         {filterActive && <button type="button" onClick={() => { setSearchQuery(''); setCategoryFilter('すべて') }}>絞り込みを解除</button>}
       </section>
-      <section className="store-list-section"><div className="list-heading"><div><h2>登録済み景品</h2><p>すべての店舗で再利用できます</p></div><span>{filterActive ? `${filteredPrizes.length} / ${prizes.length}件` : `${prizes.length}件`}</span></div>
-        {prizes.length === 0 ? <p className="list-empty">登録済み景品はありません。</p> : filteredPrizes.length === 0 ? <p className="list-empty">条件に一致する景品はありません。検索語やカテゴリを変更してください。</p> : <ul className="prize-list">{filteredPrizes.map(prize => <li key={prize.id}><button className="prize-select" type="button" onClick={() => managementMode ? startEdit(prize) : onSelectPrize?.(prize)}>{prize.imageDataUrl ? <img className="prize-list-photo" src={prize.imageDataUrl} alt="" /> : <div className="prize-photo-placeholder" aria-hidden="true">景</div>}<div className="prize-info"><strong>{prize.name}</strong>{(prize.manufacturer || prize.contentDescription) && <small className="prize-product-meta">{[prize.manufacturer, prize.contentDescription].filter(Boolean).join(' ・ ')}</small>}<span>{prize.category}・参考価格 {prize.estimatedPrice.toLocaleString()}円{(prize.quantity ?? 1) > 1 ? `（${(prize.unitPrice ?? 0).toLocaleString()}円×${prize.quantity}個）` : ''}{prize.priceReferenceName ? `・${prize.priceReferenceName}` : ''}</span><small className="price-basis-label">{prize.priceBasis ?? (prize.category === 'フィギュア' || prize.category === 'ぬいぐるみ' ? 'プライズ品の市場相場' : 'その他の手入力')}</small><em className={`price-origin-badge ${(prize.userEditedPrice ?? true) ? 'edited' : 'automatic'}`}>{(prize.userEditedPrice ?? true) ? 'ユーザー編集価格' : '自動取得価格'}</em></div><span aria-hidden="true">›</span></button><div className="store-actions">{!managementMode && <button type="button" onClick={() => startEdit(prize)}>編集</button>}<button className="delete-button" type="button" onClick={() => void remove(prize)}>削除</button></div></li>)}</ul>}
+      <section className="store-list-section"><div className="list-heading"><div><h2>登録済み景品</h2><p>{managementMode?'利用停止しても過去の履歴は残ります':'すべての店舗で再利用できます'}</p></div><span>{filterActive ? `${filteredPrizes.length} / ${availablePrizes.length}件` : `${availablePrizes.length}件`}</span></div>
+        {availablePrizes.length === 0 ? <p className="list-empty">{managementMode?'登録済み景品はありません。':'利用できる景品がありません。設定から利用再開できます。'}</p> : filteredPrizes.length === 0 ? <p className="list-empty">条件に一致する景品はありません。検索語やカテゴリを変更してください。</p> : <ul className="prize-list">{filteredPrizes.map(prize => <li className={prize.isArchived?'archived-item':''} key={prize.id}><button className="prize-select" type="button" onClick={() => managementMode ? startEdit(prize) : onSelectPrize?.(prize)}>{prize.imageDataUrl ? <img className="prize-list-photo" src={prize.imageDataUrl} alt="" /> : <div className="prize-photo-placeholder" aria-hidden="true">景</div>}<div className="prize-info"><strong>{prize.name}{prize.isArchived&&<small className="archive-badge">利用停止中</small>}</strong>{(prize.manufacturer || prize.contentDescription) && <small className="prize-product-meta">{[prize.manufacturer, prize.contentDescription].filter(Boolean).join(' ・ ')}</small>}<span>{prize.category}・参考価格 {prize.estimatedPrice.toLocaleString()}円{(prize.quantity ?? 1) > 1 ? `（${(prize.unitPrice ?? 0).toLocaleString()}円×${prize.quantity}個）` : ''}{prize.priceReferenceName ? `・${prize.priceReferenceName}` : ''}</span><small className="price-basis-label">{prize.priceBasis ?? (prize.category === 'フィギュア' || prize.category === 'ぬいぐるみ' ? 'プライズ品の市場相場' : 'その他の手入力')}</small><em className={`price-origin-badge ${(prize.userEditedPrice ?? true) ? 'edited' : 'automatic'}`}>{(prize.userEditedPrice ?? true) ? 'ユーザー編集価格' : '自動取得価格'}</em></div><span aria-hidden="true">›</span></button><div className="store-actions">{!managementMode&&<button type="button" onClick={() => startEdit(prize)}>編集</button>}{managementMode&&<button type="button" onClick={()=>void toggleArchived(prize)}>{prize.isArchived?'利用再開':'利用停止'}</button>}<button className="delete-button" type="button" onClick={() => void remove(prize)}>削除</button></div></li>)}</ul>}
       </section></>}
     </main>
     {scannerOpen && <Suspense fallback={<div className="scanner-overlay"><div className="scanner-panel"><p className="list-empty">読取機能を準備しています…</p></div></div>}><BarcodeScanner onDetected={barcodeDetected} onClose={() => setScannerOpen(false)} /></Suspense>}

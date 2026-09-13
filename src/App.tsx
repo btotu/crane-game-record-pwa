@@ -100,8 +100,9 @@ function App() {
   const openPlay = () => {
     setMessage('')
     setError('')
-    if (stores.length === 0) setStoreOrigin('home')
-    setScreen(stores.length === 0 ? 'stores' : 'select-store')
+    const activeStores=stores.filter(store=>!store.isArchived)
+    if (activeStores.length === 0) setStoreOrigin('home')
+    setScreen(activeStores.length === 0 ? 'stores' : 'select-store')
   }
 
   const resetForm = () => {
@@ -189,7 +190,7 @@ function App() {
     }
   }
 
-  const storesWithDistance = stores.map((store) => ({
+  const storesWithDistance = stores.filter(store=>!store.isArchived).map((store) => ({
     store,
     distance: currentPosition && store.latitude != null && store.longitude != null
       ? locationService.distanceMeters(currentPosition, { latitude: store.latitude, longitude: store.longitude })
@@ -253,6 +254,8 @@ function App() {
     }
   }
 
+  const toggleStoreArchived=async(store:Store)=>{try{setError('');await storeService.setArchived(store.id,!store.isArchived);setMessage(store.isArchived?'店舗を利用中に戻しました。':'店舗を利用停止にしました。過去の履歴は残ります。');await loadStores()}catch(e){setMessage('');setError(getErrorMessage(e))}}
+
   if (screen === 'store-today' && selectedStore) return <StoreToday store={selectedStore} onAdd={() => setScreen('prizes')} onFinish={() => setScreen('home')} onSelect={(prize) => { setSelectedPrize(prize); setPlayOrigin('store-today'); setScreen('play') }} onOpenDetail={(visit,prizeId)=>{setSelectedVisit(visit);setSelectedVisitPrizeId(prizeId);setPrizeDetailOrigin('store-today');setScreen('prize-detail')}} />
 
   if (screen === 'play' && selectedStore && selectedPrize) {
@@ -292,7 +295,7 @@ function App() {
           {currentPosition && <p className="location-status">位置情報を保存済みの店舗を、現在地から近い順に表示しています。</p>}
           {error && <p className="feedback error-message" role="alert">{error}</p>}
           {message && <p className="feedback success-message" role="status">{message}</p>}
-          {stores.length > 0 && <div className="nearby-heading"><strong>登録済み店舗</strong><span>{currentPosition ? '近い順' : '最近利用した順'}</span></div>}
+          {storesWithDistance.length > 0 && <div className="nearby-heading"><strong>登録済み店舗</strong><span>{currentPosition ? '近い順' : '最近利用した順'}</span></div>}
           <ul className="selection-list">
             {storesWithDistance.map(({store,distance}) => <li key={store.id}><button type="button" onClick={() => { setSelectedStore(store); setScreen('store-today') }}>{store.imageDataUrl ? <img className="store-list-photo" src={store.imageDataUrl} alt="" /> : <span className="store-avatar" aria-hidden="true">店</span>}<strong>{store.name}{distance != null && <small>{distance < 1000 ? `約${Math.round(distance / 10) * 10}m` : `約${(distance / 1000).toFixed(1)}km`}</small>}</strong><span aria-hidden="true">›</span></button></li>)}
           </ul>
@@ -354,11 +357,12 @@ function App() {
             ) : (
               <ul className="store-list">
                 {stores.map((store) => (
-                  <li key={store.id}>
+                  <li className={store.isArchived?'archived-item':''} key={store.id}>
                     {store.imageDataUrl ? <img className="store-list-photo" src={store.imageDataUrl} alt="" /> : <div className="store-avatar" aria-hidden="true">店</div>}
-                    <div className="store-info"><strong>{store.name}</strong><span>{store.latitude != null && store.longitude != null ? '位置情報あり' : '位置情報なし'}</span></div>
+                    <div className="store-info"><strong>{store.name}{store.isArchived&&<small className="archive-badge">利用停止中</small>}</strong><span>{store.latitude != null && store.longitude != null ? '位置情報あり' : '位置情報なし'}</span></div>
                     <div className="store-actions">
                       <button type="button" onClick={() => startEditing(store)}>編集</button>
+                      <button type="button" onClick={()=>void toggleStoreArchived(store)}>{store.isArchived?'利用再開':'利用停止'}</button>
                       <button className="delete-button" type="button" onClick={() => void deleteStore(store)}>削除</button>
                     </div>
                   </li>

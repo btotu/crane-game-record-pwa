@@ -12,6 +12,7 @@ export interface Store {
   externalStoreId?: string
   imageSource: 'placeholder' | 'user' | 'external'
   imageDataUrl?: string
+  isArchived?: boolean
 }
 
 export interface StoreInput {

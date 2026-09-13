@@ -13,6 +13,10 @@ export const storeService = {
     return storeRepository.getAll()
   },
 
+  async listActive():Promise<Store[]>{
+    return (await storeRepository.getAll()).filter(store=>!store.isArchived)
+  },
+
   create(input: StoreInput): Promise<Store> {
     validateStoreName(input.name)
     return storeRepository.create(input)
@@ -27,5 +31,9 @@ export const storeService = {
     const playCount = await playRepository.countByStore(id)
     if (playCount > 0) throw new Error(`この店舗には${playCount}件のプレイ記録があるため削除できません。店舗名や写真の変更は「編集」を使用してください。`)
     return storeRepository.remove(id)
+  },
+
+  setArchived(id:string,isArchived:boolean):Promise<void>{
+    return storeRepository.setArchived(id,isArchived)
   },
 }
