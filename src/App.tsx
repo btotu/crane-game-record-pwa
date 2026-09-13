@@ -194,6 +194,11 @@ function App() {
       ? locationService.distanceMeters(currentPosition, { latitude: store.latitude, longitude: store.longitude })
       : null,
   })).sort((a, b) => {
+    if (!currentPosition) {
+      const aUsedAt = a.store.lastUsedAt ?? a.store.createdAt
+      const bUsedAt = b.store.lastUsedAt ?? b.store.createdAt
+      return bUsedAt.localeCompare(aUsedAt)
+    }
     if (a.distance == null) return b.distance == null ? 0 : 1
     if (b.distance == null) return -1
     return a.distance - b.distance
@@ -285,7 +290,7 @@ function App() {
           {currentPosition && <p className="location-status">位置情報を保存済みの店舗を、現在地から近い順に表示しています。</p>}
           {error && <p className="feedback error-message" role="alert">{error}</p>}
           {message && <p className="feedback success-message" role="status">{message}</p>}
-          {stores.length > 0 && <div className="nearby-heading"><strong>登録済み店舗</strong><span>近い順</span></div>}
+          {stores.length > 0 && <div className="nearby-heading"><strong>登録済み店舗</strong><span>{currentPosition ? '近い順' : '最近利用した順'}</span></div>}
           <ul className="selection-list">
             {storesWithDistance.map(({store,distance}) => <li key={store.id}><button type="button" onClick={() => { setSelectedStore(store); setScreen('store-today') }}>{store.imageDataUrl ? <img className="store-list-photo" src={store.imageDataUrl} alt="" /> : <span className="store-avatar" aria-hidden="true">店</span>}<strong>{store.name}{distance != null && <small>{distance < 1000 ? `約${Math.round(distance / 10) * 10}m` : `約${(distance / 1000).toFixed(1)}km`}</small>}</strong><span aria-hidden="true">›</span></button></li>)}
           </ul>
