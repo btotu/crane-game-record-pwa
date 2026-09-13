@@ -9,8 +9,8 @@ interface Props { store:Store; prize:Prize; onBack:()=>void; onSaved:()=>void }
 export function PlayRecorder({store,prize,onBack,onSaved}:Props) {
   const [amount,setAmount]=useState(0); const [direct,setDirect]=useState(''); const [records,setRecords]=useState<PlayRecord[]>([]); const [quickAmounts,setQuickAmounts]=useState(defaultQuickAmounts); const [message,setMessage]=useState(''); const [error,setError]=useState(''); const [saving,setSaving]=useState(false)
   const saveLock=useRef(false)
-  useEffect(()=>{ void playService.today(store.id,prize.id).then(setRecords) },[store.id,prize.id])
-  useEffect(()=>{ void playInputSettingService.getQuickAmounts().then(setQuickAmounts) },[])
+  useEffect(()=>{ void playService.today(store.id,prize.id).then(setRecords).catch(()=>setError('本日の記録を読み込めませんでした。アプリを再読み込みしてください。')) },[store.id,prize.id])
+  useEffect(()=>{ void playInputSettingService.getQuickAmounts().then(setQuickAmounts).catch(()=>setError('金額設定を読み込めませんでした。初期金額で入力できます。')) },[])
   const add=(value:number)=>{ setAmount(current=>current+value); setDirect(''); setError('') }
   const record=async(result:PlayResult)=>{ if(saveLock.current)return;saveLock.current=true;try { setSaving(true); setError(''); const finalAmount=direct===''?amount:Number(direct); await playService.create({storeId:store.id,prizeId:prize.id,amount:finalAmount,result}); setAmount(0); setDirect(''); setMessage(`${result}として記録しました。`); onSaved() } catch(e) { setError(e instanceof Error?e.message:'記録に失敗しました。') } finally { saveLock.current=false;setSaving(false) } }
   const leave=(next:()=>void)=>{ if (saving) return; if (direct!=='' || amount>0) { setError('入力中の使用額が残っています。結果を選んで記録するか、金額をクリアしてください。'); return } next() }
