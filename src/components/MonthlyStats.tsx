@@ -70,7 +70,7 @@ export function MonthlyStats({ onBack, onOpenStores, onOpenPrizes }: Props) {
     const current = map.get(month) ?? { month, spent: 0, value: 0, wins: 0, withdrawals: 0, plays: 0 }
     current.spent += play.amount
     current.plays++
-    if (won) { current.wins++; current.value += prizeMap.get(play.prizeId)?.estimatedPrice ?? 0 } else current.withdrawals++
+    if (won) { current.wins++; current.value += play.estimatedPriceAtPlay ?? prizeMap.get(play.prizeId)?.estimatedPrice ?? 0 } else current.withdrawals++
     map.set(month, current)
   }
   const months = [...map.values()].sort((a, b) => b.month - a.month)

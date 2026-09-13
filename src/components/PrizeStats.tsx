@@ -63,9 +63,9 @@ export function PrizeStats({ onBack, onOpenStores, onOpenMonthly }: Props) {
     const current = map.get(play.prizeId)
     if (current) {
       current.spent += play.amount; current.plays++; current.stores.add(play.storeId)
-      if (won) { current.wins++; current.value += prize?.estimatedPrice ?? 0 } else current.withdrawals++
+      if (won) { current.wins++; current.value += play.estimatedPriceAtPlay ?? prize?.estimatedPrice ?? 0 } else current.withdrawals++
       if (play.startedAt > current.lastAt) current.lastAt = play.startedAt
-    } else map.set(play.prizeId, { id: play.prizeId, name: prize?.name ?? '削除済みの景品', category: prize?.category ?? '未分類', imageDataUrl: prize?.imageDataUrl, spent: play.amount, value: won ? prize?.estimatedPrice ?? 0 : 0, wins: won ? 1 : 0, withdrawals: won ? 0 : 1, plays: 1, stores: new Set([play.storeId]), lastAt: play.startedAt })
+    } else map.set(play.prizeId, { id: play.prizeId, name: prize?.name ?? '削除済みの景品', category: prize?.category ?? '未分類', imageDataUrl: prize?.imageDataUrl, spent: play.amount, value: won ? play.estimatedPriceAtPlay ?? prize?.estimatedPrice ?? 0 : 0, wins: won ? 1 : 0, withdrawals: won ? 0 : 1, plays: 1, stores: new Set([play.storeId]), lastAt: play.startedAt })
   }
   const normalizedQuery = searchQuery.trim().toLocaleLowerCase('ja-JP')
   const stats = [...map.values()].filter(stat =>

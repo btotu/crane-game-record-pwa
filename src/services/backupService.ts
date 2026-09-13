@@ -40,7 +40,9 @@ export const backupService = {
     const data = parse(raw)
     const stores = data.stores.filter(hasId) as Store[]
     const prizes = data.prizes.filter(hasId) as Prize[]
-    const plays = data.plays.filter(hasId) as PlayRecord[]
+    const rawPlays = data.plays.filter(hasId) as PlayRecord[]
+    const importedPrizePrices = new Map(prizes.map(prize => [prize.id, prize.estimatedPrice]))
+    const plays = rawPlays.map(play => ({ ...play, estimatedPriceAtPlay: play.estimatedPriceAtPlay ?? importedPrizePrices.get(play.prizeId) ?? 0 }))
     const settings = data.version === 2 ? data.settings.filter(isSetting) : []
     const result: ImportResult = { storesAdded: 0, prizesAdded: 0, playsAdded: 0, settingsRestored: 0, skipped: 0 }
     await database.transaction('rw', database.stores, database.prizes, database.plays, database.settings, async () => {

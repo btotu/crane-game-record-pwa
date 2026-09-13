@@ -31,6 +31,18 @@ class CraneRecordDatabase extends Dexie {
       plays: 'id, storeId, prizeId, playDate, startedAt, [storeId+playDate], [storeId+prizeId+playDate]',
       settings: 'key',
     })
+    this.version(5).stores({
+      stores: 'id, name, createdAt, lastUsedAt',
+      prizes: 'id, name, category, createdAt',
+      plays: 'id, storeId, prizeId, playDate, startedAt, [storeId+playDate], [storeId+prizeId+playDate]',
+      settings: 'key',
+    }).upgrade(async transaction => {
+      const prizes = await transaction.table<Prize>('prizes').toArray()
+      const prices = new Map(prizes.map(prize => [prize.id, prize.estimatedPrice]))
+      await transaction.table<PlayRecord>('plays').toCollection().modify(play => {
+        if (play.estimatedPriceAtPlay == null) play.estimatedPriceAtPlay = prices.get(play.prizeId) ?? 0
+      })
+    })
   }
 }
 
