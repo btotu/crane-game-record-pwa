@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { dataHealthService } from '../services/dataHealthService'
+import { APP_VERSION, DATA_SCHEMA_VERSION } from '../appVersion'
 
 type CheckState = 'checking' | 'ok' | 'attention' | 'unknown'
 interface StatusItem { label: string; detail: string; state: CheckState }
@@ -25,6 +26,8 @@ export function DeviceStatusSettings({ onBack }: { onBack: () => void }) {
   const check = useCallback(async () => {
     setChecking(true)
     const next: StatusItem[] = []
+
+    next.push({ label: 'アプリのバージョン', detail: `v${APP_VERSION}（データ形式 v${DATA_SCHEMA_VERSION}）`, state: 'ok' })
 
     const checkPermission = async (name: 'geolocation' | 'camera', label: string) => {
       if (!navigator.permissions?.query) {
