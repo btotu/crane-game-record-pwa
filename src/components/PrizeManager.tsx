@@ -73,6 +73,14 @@ export function PrizeManager({ store, onBack, onSelectPrize, mode = 'select' }: 
   const reload = async () => setPrizes(await prizeService.list())
   useEffect(() => { void Promise.all([prizeService.list(), playRepository.getAll()]).then(([savedPrizes, savedPlays]) => { setPrizes(savedPrizes); setPlays(savedPlays) }).catch((e: unknown) => setError(errorText(e))) }, [])
   const reset = () => { setName(''); setCategory('食品'); setPrice(''); setQuantity('1'); setPriceSource('user'); setUserEditedPrice(true); setPriceBasis('市販商品価格'); setManufacturer(''); setContentDescription(''); setEditing(null); setImageDataUrl(null); setJanCode(''); setReferenceName(''); setReferenceUrl(''); setPriceCheckedAt(todayKey()) }
+  const formDirty = editing ? (() => {
+    const savedQuantity = editing.quantity ?? 1
+    return name !== editing.name || category !== editing.category || price !== String(editing.unitPrice ?? Math.round(editing.estimatedPrice / savedQuantity)) || quantity !== String(savedQuantity) || manufacturer !== (editing.manufacturer ?? '') || contentDescription !== (editing.contentDescription ?? '') || imageDataUrl !== (editing.imageDataUrl ?? null) || janCode !== (editing.janCode ?? '') || priceBasis !== (editing.priceBasis ?? (editing.category === 'フィギュア' || editing.category === 'ぬいぐるみ' ? 'プライズ品の市場相場' : 'その他の手入力')) || referenceName !== (editing.priceReferenceName ?? '') || referenceUrl !== (editing.priceReferenceUrl ?? '') || priceCheckedAt !== (editing.priceCheckedAt ?? todayKey())
+  })() : Boolean(name || price || manufacturer || contentDescription || imageDataUrl || janCode || referenceName || referenceUrl || category !== '食品' || quantity !== '1' || priceBasis !== '市販商品価格')
+  const closeForm = () => {
+    if (formDirty && !confirm('入力中の景品情報を破棄して、景品選択画面へ戻りますか？')) return
+    reset(); setFormOpen(false); setError(''); setFeedback(''); window.scrollTo(0, 0)
+  }
   const submit = async (event: FormEvent) => {
     event.preventDefault(); if (saveLock.current) return; saveLock.current = true; setSaving(true); setError('')
     try {
@@ -99,7 +107,7 @@ export function PrizeManager({ store, onBack, onSelectPrize, mode = 'select' }: 
     setFeedback(`バーコード「${code}」を読み取りました。`)
   }, [])
   return <div className="app-shell">
-    <header className="page-header"><button className="back-button" type="button" onClick={() => { if (formOpen) { reset(); setFormOpen(false); setError(''); setFeedback(''); window.scrollTo(0, 0) } else onBack() }}>‹</button><div><p className="app-eyebrow">{managementMode ? 'PRIZE SETTINGS' : 'PRIZE SETUP'}</p><h1>{formOpen ? editing ? '景品を編集' : '景品を新規登録' : managementMode ? '景品の登録・編集' : '景品を選択'}</h1></div></header>
+    <header className="page-header"><button className="back-button" type="button" onClick={() => { if (formOpen) closeForm(); else onBack() }}>‹</button><div><p className="app-eyebrow">{managementMode ? 'PRIZE SETTINGS' : 'PRIZE SETUP'}</p><h1>{formOpen ? editing ? '景品を編集' : '景品を新規登録' : managementMode ? '景品の登録・編集' : '景品を選択'}</h1></div></header>
     <main className="store-main">
       {store && <p className="selected-store">プレイ店舗 <strong>{store.name}</strong></p>}
       {formOpen && <section className="form-card"><div className="section-heading"><span className="section-number">02</span><div><h2>{editing ? '景品を編集' : '景品を手動登録'}</h2><p>代表写真を1枚保存できます</p></div></div>
@@ -118,7 +126,7 @@ export function PrizeManager({ store, onBack, onSelectPrize, mode = 'select' }: 
           {priceBasis === 'プライズ品の市場相場' && <p className="market-price-note">販売価格や買取価格は変動するため、確認時点の参考値として記録します。</p>}
           <div className="quantity-price-row"><label htmlFor="quantity">セット数量</label><input id="quantity" type="number" inputMode="numeric" min="1" max="100" step="1" value={quantity} onChange={e => setQuantity(e.target.value)} /><p><span>合計参考価格</span><strong>{(Number(price || 0) * Number(quantity || 0)).toLocaleString()}円</strong><small>単価 {Number(price || 0).toLocaleString()}円 × {Number(quantity || 0)}個</small></p></div>
           <fieldset className="price-reference-fields"><legend>価格の参考情報（任意）</legend><label htmlFor="reference-name">参考サイト・店舗名</label><input id="reference-name" value={referenceName} onChange={e => setReferenceName(e.target.value)} maxLength={80} placeholder="例：メーカー希望小売価格、○○ストア" /><label htmlFor="reference-url">参考URL</label><input id="reference-url" type="url" inputMode="url" value={referenceUrl} onChange={e => setReferenceUrl(e.target.value)} placeholder="https://..." /><label htmlFor="price-checked-at">価格確認日</label><input id="price-checked-at" type="date" max={todayKey()} value={priceCheckedAt} onChange={e => setPriceCheckedAt(e.target.value)} /></fieldset>
-          <div className="form-actions"><button className="secondary-button" type="button" disabled={saving} onClick={() => { reset(); setFormOpen(false); setError(''); setFeedback(''); window.scrollTo(0, 0) }}>景品選択へ戻る</button><button className="save-button" type="submit" disabled={isProcessingImage || saving}>{editing ? '変更を保存' : '景品を登録'}</button></div>
+          <div className="form-actions"><button className="secondary-button" type="button" disabled={saving} onClick={closeForm}>景品選択へ戻る</button><button className="save-button" type="submit" disabled={isProcessingImage || saving}>{editing ? '変更を保存' : '景品を登録'}</button></div>
         </form>
       </section>}
       {error && <p className="feedback error-message" role="alert">{error}</p>}{feedback && <p className="feedback success-message" role="status">{feedback}</p>}

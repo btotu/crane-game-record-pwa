@@ -107,6 +107,18 @@ function App() {
     setStoreImageDataUrl(null)
   }
 
+  const storeFormDirty = editingStore
+    ? storeName !== editingStore.name || storeImageDataUrl !== (editingStore.imageDataUrl ?? null) || storePosition?.latitude !== editingStore.latitude || storePosition?.longitude !== editingStore.longitude
+    : Boolean(storeName || storeImageDataUrl || storePosition)
+
+  const leaveStoreSettings = () => {
+    if (storeFormDirty && !window.confirm('入力中の店舗情報を破棄して戻りますか？')) return
+    resetForm()
+    setMessage('')
+    setError('')
+    setScreen(storeOrigin)
+  }
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     try {
@@ -287,7 +299,7 @@ function App() {
     return (
       <div className="app-shell">
         <header className="page-header">
-          <button className="back-button" type="button" onClick={() => setScreen(storeOrigin)} aria-label="前の画面へ戻る">‹</button>
+          <button className="back-button" type="button" onClick={leaveStoreSettings} aria-label="前の画面へ戻る">‹</button>
           <div><p className="app-eyebrow">STORE SETTINGS</p><h1>店舗の登録</h1></div>
         </header>
 
