@@ -14,6 +14,7 @@ import { StoreStats } from './components/StoreStats'
 import { PrizeStats } from './components/PrizeStats'
 import { MonthlyStats } from './components/MonthlyStats'
 import { HomeMonthlyBudget } from './components/HomeMonthlyBudget'
+import { HomeBackupReminder } from './components/HomeBackupReminder'
 import { ApproximateEntry } from './components/ApproximateEntry'
 import { BackupSettings } from './components/BackupSettings'
 import { SettingsMenu } from './components/SettingsMenu'
@@ -41,6 +42,7 @@ function App() {
   const [prizeDetailOrigin,setPrizeDetailOrigin]=useState<'visit-detail'|'store-today'>('visit-detail')
   const [playOrigin,setPlayOrigin]=useState<'prizes'|'prize-detail'|'store-today'>('prizes')
   const [storeOrigin,setStoreOrigin]=useState<'home'|'select-store'|'settings'>('home')
+  const [backupOrigin,setBackupOrigin]=useState<'home'|'settings'>('settings')
   const [storeName, setStoreName] = useState('')
   const [editingStore, setEditingStore] = useState<Store | null>(null)
   const [message, setMessage] = useState('')
@@ -259,8 +261,8 @@ function App() {
   if (screen === 'prize-stats') return <PrizeStats onBack={() => setScreen('home')} onOpenStores={() => setScreen('store-stats')} onOpenMonthly={() => setScreen('monthly-stats')} />
   if (screen === 'monthly-stats') return <MonthlyStats onBack={() => setScreen('home')} onOpenStores={() => setScreen('store-stats')} onOpenPrizes={() => setScreen('prize-stats')} />
   if (screen === 'approximate') return <ApproximateEntry onBack={() => setScreen('home')} />
-  if (screen === 'settings') return <SettingsMenu onBack={() => setScreen('home')} onStores={() => openStores('settings')} onPrizes={() => setScreen('prize-settings')} onPlayInput={() => setScreen('play-input-settings')} onDeviceStatus={() => setScreen('device-status-settings')} onProductApi={() => setScreen('product-api-settings')} onBackup={() => setScreen('backup')} />
-  if (screen === 'backup') return <BackupSettings onBack={() => setScreen('settings')} />
+  if (screen === 'settings') return <SettingsMenu onBack={() => setScreen('home')} onStores={() => openStores('settings')} onPrizes={() => setScreen('prize-settings')} onPlayInput={() => setScreen('play-input-settings')} onDeviceStatus={() => setScreen('device-status-settings')} onProductApi={() => setScreen('product-api-settings')} onBackup={() => { setBackupOrigin('settings'); setScreen('backup') }} />
+  if (screen === 'backup') return <BackupSettings onBack={() => setScreen(backupOrigin)} />
   if (screen === 'product-api-settings') return <ProductApiSettings onBack={() => setScreen('settings')} />
   if (screen === 'prize-settings') return <PrizeManager mode="manage" onBack={() => setScreen('settings')} />
   if (screen === 'play-input-settings') return <PlayInputSettings onBack={() => setScreen('settings')} />
@@ -367,6 +369,7 @@ function App() {
         </button>
       </header>
       <main className="app-main">
+        <HomeBackupReminder onOpen={() => { setBackupOrigin('home'); setScreen('backup') }} />
         <HomeMonthlyBudget onOpen={() => setScreen('monthly-stats')} />
         <HomeHistory onStart={openPlay} onOpen={(visit) => { setSelectedVisit(visit); setDetailOrigin('home'); setScreen('visit-detail') }} />
       </main>
