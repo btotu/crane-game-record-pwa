@@ -7,12 +7,14 @@ import { defaultQuickAmounts, playInputSettingService } from '../services/playIn
 
 interface Props { store:Store; prize:Prize; onBack:()=>void; onSaved:()=>void }
 export function PlayRecorder({store,prize,onBack,onSaved}:Props) {
-  const [amount,setAmount]=useState(0); const [direct,setDirect]=useState(''); const [records,setRecords]=useState<PlayRecord[]>([]); const [quickAmounts,setQuickAmounts]=useState(defaultQuickAmounts); const [message,setMessage]=useState(''); const [error,setError]=useState(''); const [saving,setSaving]=useState(false)
+  const [amount,setAmount]=useState(0); const [direct,setDirect]=useState(''); const [records,setRecords]=useState<PlayRecord[]>([]); const [quickAmounts,setQuickAmounts]=useState(defaultQuickAmounts); const [message,setMessage]=useState(''); const [undoRecord,setUndoRecord]=useState<PlayRecord|null>(null); const [error,setError]=useState(''); const [saving,setSaving]=useState(false)
   const saveLock=useRef(false)
   useEffect(()=>{ void playService.today(store.id,prize.id).then(setRecords).catch(()=>setError('本日の記録を読み込めませんでした。アプリを再読み込みしてください。')) },[store.id,prize.id])
   useEffect(()=>{ void playInputSettingService.getQuickAmounts().then(setQuickAmounts).catch(()=>setError('金額設定を読み込めませんでした。初期金額で入力できます。')) },[])
+  useEffect(()=>{if(!undoRecord)return;const timer=window.setTimeout(()=>setUndoRecord(null),10000);return()=>window.clearTimeout(timer)},[undoRecord])
   const add=(value:number)=>{ setAmount(current=>current+value); setDirect(''); setError('') }
-  const record=async(result:PlayResult)=>{ if(saveLock.current)return;saveLock.current=true;try { setSaving(true); setError(''); const finalAmount=direct===''?amount:Number(direct); await playService.create({storeId:store.id,prizeId:prize.id,amount:finalAmount,result}); setAmount(0); setDirect(''); setMessage(`${result}として記録しました。`); onSaved() } catch(e) { setError(e instanceof Error?e.message:'記録に失敗しました。') } finally { saveLock.current=false;setSaving(false) } }
+  const record=async(result:PlayResult)=>{ if(saveLock.current)return;saveLock.current=true;try { setSaving(true); setError(''); const finalAmount=direct===''?amount:Number(direct); const saved=await playService.create({storeId:store.id,prizeId:prize.id,amount:finalAmount,result}); setRecords(await playService.today(store.id,prize.id));setAmount(0); setDirect(''); setUndoRecord(saved);setMessage(`${result}として記録しました。`); onSaved() } catch(e) { setError(e instanceof Error?e.message:'記録に失敗しました。') } finally { saveLock.current=false;setSaving(false) } }
+  const undo=async()=>{if(!undoRecord||saving)return;try{setSaving(true);setError('');await playService.remove(undoRecord.id);setUndoRecord(null);setMessage('直前の追加を取り消しました。');setRecords(await playService.today(store.id,prize.id));onSaved()}catch(e){setError(e instanceof Error?e.message:'取り消しに失敗しました。')}finally{setSaving(false)}}
   const leave=(next:()=>void)=>{ if (saving) return; if (direct!=='' || amount>0) { setError('入力中の使用額が残っています。結果を選んで記録するか、金額をクリアしてください。'); return } next() }
   const total=records.reduce((sum,item)=>sum+item.amount,0); const wins=records.filter(item=>item.result!=='撤退').length
   return <div className="app-shell"><header className="page-header"><button className="back-button" type="button" onClick={()=>leave(onBack)}>‹</button><div><p className="app-eyebrow">PLAY RECORD</p><h1>プレイを記録</h1></div></header>
@@ -22,7 +24,7 @@ export function PlayRecorder({store,prize,onBack,onSaved}:Props) {
         <button className="clear-amount" type="button" onClick={()=>{setAmount(0);setDirect('')}}>金額をクリア</button>
       </section>
       <section className="result-card"><h2>結果を選んで記録</h2><div className="result-buttons"><button disabled={saving} type="button" onClick={()=>void record('獲得')}>獲得</button><button disabled={saving} type="button" onClick={()=>void record('撤退')}>撤退</button><button disabled={saving} type="button" onClick={()=>void record('アシスト獲得')}>アシスト獲得</button></div></section>
-      {error&&<p className="feedback error-message" role="alert">{error}</p>}{message&&<p className="feedback success-message" role="status">{message}</p>}
+      {error&&<p className="feedback error-message" role="alert">{error}</p>}{message&&<div className="feedback success-message undo-feedback" role="status"><span>{message}</span>{undoRecord&&<button type="button" disabled={saving} onClick={()=>void undo()}>取り消す</button>}</div>}
       <section className="today-summary"><div><span>この景品の本日使用額</span><strong>{total.toLocaleString()}円</strong></div><div><span>獲得数</span><strong>{wins}個</strong></div><div><span>プレイ記録</span><strong>{records.length}件</strong></div></section>
       {records.length>0&&<ol className="play-history">{[...records].reverse().map((item,index)=><li key={item.id}><span>{records.length-index}回目・{item.result}</span><strong>{item.amount.toLocaleString()}円</strong></li>)}</ol>}
     </main></div>
