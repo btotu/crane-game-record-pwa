@@ -1,5 +1,6 @@
 import type { Store, StoreInput } from '../models/store'
 import { storeRepository } from '../repositories/storeRepository'
+import { playRepository } from '../repositories/playRepository'
 
 const validateStoreName = (name: string) => {
   const normalizedName = name.trim()
@@ -22,7 +23,9 @@ export const storeService = {
     return storeRepository.update(id, input)
   },
 
-  remove(id: string): Promise<void> {
+  async remove(id: string): Promise<void> {
+    const playCount = await playRepository.countByStore(id)
+    if (playCount > 0) throw new Error(`この店舗には${playCount}件のプレイ記録があるため削除できません。店舗名や写真の変更は「編集」を使用してください。`)
     return storeRepository.remove(id)
   },
 }

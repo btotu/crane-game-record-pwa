@@ -4,6 +4,8 @@ import type { ApproximatePlayInput, PlayInput, PlayRecord, PlayUpdateInput } fro
 const localDate = (date: Date) => [date.getFullYear(), String(date.getMonth()+1).padStart(2,'0'), String(date.getDate()).padStart(2,'0')].join('-')
 export const playRepository = {
   getAll: (): Promise<PlayRecord[]> => database.plays.toArray(),
+  countByStore: (storeId:string):Promise<number> => database.plays.where('storeId').equals(storeId).count(),
+  countByPrize: (prizeId:string):Promise<number> => database.plays.where('prizeId').equals(prizeId).count(),
   async create(input: PlayInput): Promise<PlayRecord> {
     const now = new Date(); const timestamp = now.toISOString()
     const record: PlayRecord = { id:crypto.randomUUID(), ...input, playDate:localDate(now), startedAt:timestamp, endedAt:timestamp, memo:'', isApproximate:false }

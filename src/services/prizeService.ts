@@ -1,5 +1,6 @@
 import { priceBasisOptions, type PrizeInput } from '../models/prize'
 import { prizeRepository } from '../repositories/prizeRepository'
+import { playRepository } from '../repositories/playRepository'
 
 const validate = (input: PrizeInput) => {
   if (!input.name.trim()) throw new Error('景品名を入力してください。')
@@ -27,5 +28,9 @@ export const prizeService = {
   list: prizeRepository.getAll,
   create(input: PrizeInput) { validate(input); return prizeRepository.create(input) },
   update(id: string, input: PrizeInput) { validate(input); return prizeRepository.update(id, input) },
-  remove: prizeRepository.remove,
+  async remove(id: string) {
+    const playCount = await playRepository.countByPrize(id)
+    if (playCount > 0) throw new Error(`この景品には${playCount}件のプレイ記録があるため削除できません。景品名や価格の変更は「編集」を使用してください。`)
+    return prizeRepository.remove(id)
+  },
 }

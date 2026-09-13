@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useState, type ChangeEvent, type FormEvent } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import type { Store } from '../models/store'
 import { priceBasisOptions, prizeCategories, type PriceBasis, type Prize, type PrizeCategory } from '../models/prize'
 import { prizeService } from '../services/prizeService'
@@ -40,6 +40,7 @@ export function PrizeManager({ store, onBack, onSelectPrize, mode = 'select' }: 
   const [priceCheckedAt, setPriceCheckedAt] = useState(todayKey())
   const [plays, setPlays] = useState<PlayRecord[]>([])
   const [quickMode, setQuickMode] = useState<'recent' | 'frequent'>('recent')
+  const saveLock = useRef(false)
 
   const normalizedQuery = searchQuery.trim().toLocaleLowerCase('ja-JP')
   const filteredPrizes = prizes.filter(prize => {
@@ -73,17 +74,17 @@ export function PrizeManager({ store, onBack, onSelectPrize, mode = 'select' }: 
   useEffect(() => { void Promise.all([prizeService.list(), playRepository.getAll()]).then(([savedPrizes, savedPlays]) => { setPrizes(savedPrizes); setPlays(savedPlays) }).catch((e: unknown) => setError(errorText(e))) }, [])
   const reset = () => { setName(''); setCategory('食品'); setPrice(''); setQuantity('1'); setPriceSource('user'); setUserEditedPrice(true); setPriceBasis('市販商品価格'); setManufacturer(''); setContentDescription(''); setEditing(null); setImageDataUrl(null); setJanCode(''); setReferenceName(''); setReferenceUrl(''); setPriceCheckedAt(todayKey()) }
   const submit = async (event: FormEvent) => {
-    event.preventDefault(); if (saving) return; setSaving(true); setError('')
+    event.preventDefault(); if (saveLock.current) return; saveLock.current = true; setSaving(true); setError('')
     try {
       const unitPrice = Number(price || 0)
       const itemQuantity = Number(quantity)
       const input = { name, category, unitPrice, quantity: itemQuantity, estimatedPrice: unitPrice * itemQuantity, priceSource, userEditedPrice, priceBasis, manufacturer, contentDescription, imageDataUrl, janCode, priceReferenceName: referenceName, priceReferenceUrl: referenceUrl, priceCheckedAt }
       if (editing) await prizeService.update(editing.id, input); else await prizeService.create(input)
       setFeedback(editing ? '景品を変更しました。' : '景品を登録しました。'); reset(); await reload(); setFormOpen(false); window.scrollTo(0, 0)
-    } catch (e) { setError(errorText(e)) } finally { setSaving(false) }
+    } catch (e) { setError(errorText(e)) } finally { saveLock.current = false; setSaving(false) }
   }
   const startEdit = (prize: Prize) => { setFormOpen(true); setError(''); window.scrollTo(0, 0); const savedQuantity = prize.quantity ?? 1; setEditing(prize); setName(prize.name); setCategory(prize.category); setPrice(String(prize.unitPrice ?? Math.round(prize.estimatedPrice / savedQuantity))); setQuantity(String(savedQuantity)); setPriceSource(prize.priceSource ?? 'user'); setUserEditedPrice(prize.userEditedPrice ?? true); setPriceBasis(prize.priceBasis ?? (prize.category === 'フィギュア' || prize.category === 'ぬいぐるみ' ? 'プライズ品の市場相場' : 'その他の手入力')); setManufacturer(prize.manufacturer ?? ''); setContentDescription(prize.contentDescription ?? ''); setImageDataUrl(prize.imageDataUrl ?? null); setJanCode(prize.janCode ?? ''); setReferenceName(prize.priceReferenceName ?? ''); setReferenceUrl(prize.priceReferenceUrl ?? ''); setPriceCheckedAt(prize.priceCheckedAt ?? todayKey()); setFeedback('') }
-  const remove = async (prize: Prize) => { if (!confirm(`「${prize.name}」を削除しますか？`)) return; await prizeService.remove(prize.id); if (editing?.id === prize.id) reset(); setFeedback('景品を削除しました。'); await reload() }
+  const remove = async (prize: Prize) => { if (!confirm(`「${prize.name}」を削除しますか？`)) return; try { setError(''); await prizeService.remove(prize.id); if (editing?.id === prize.id) reset(); setFeedback('景品を削除しました。'); await reload() } catch (e) { setFeedback(''); setError(errorText(e)) } }
   const selectImage = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]; event.target.value = ''; if (!file) return
     try { setIsProcessingImage(true); setError(''); setImageDataUrl(await imageService.compressPrizeImage(file)); setFeedback('写真を準備しました。保存ボタンを押すと登録されます。') }
