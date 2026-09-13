@@ -4,6 +4,8 @@ import { priceBasisOptions, prizeCategories, type PriceBasis, type Prize, type P
 import { prizeService } from '../services/prizeService'
 import { imageService } from '../services/imageService'
 import { todayKey } from '../services/playService'
+import type { PlayRecord } from '../models/play'
+import { playRepository } from '../repositories/playRepository'
 
 const BarcodeScanner = lazy(() => import('./BarcodeScanner').then(module => ({ default: module.BarcodeScanner })))
 
@@ -36,6 +38,8 @@ export function PrizeManager({ store, onBack, onSelectPrize, mode = 'select' }: 
   const [referenceName, setReferenceName] = useState('')
   const [referenceUrl, setReferenceUrl] = useState('')
   const [priceCheckedAt, setPriceCheckedAt] = useState(todayKey())
+  const [plays, setPlays] = useState<PlayRecord[]>([])
+  const [quickMode, setQuickMode] = useState<'recent' | 'frequent'>('recent')
 
   const normalizedQuery = searchQuery.trim().toLocaleLowerCase('ja-JP')
   const filteredPrizes = prizes.filter(prize => {
@@ -53,9 +57,20 @@ export function PrizeManager({ store, onBack, onSelectPrize, mode = 'select' }: 
     : []
   const exactNameMatch = similarNamePrizes.some(prize => normalizeName(prize.name) === normalizedPrizeName)
   const managementMode = mode === 'manage'
+  const storePlays = store ? plays.filter(play => play.storeId === store.id) : plays
+  const rankingSource = storePlays.length > 0 ? storePlays : plays
+  const prizeMap = new Map(prizes.map(prize => [prize.id, prize]))
+  const recentPrizes = [...rankingSource].sort((a, b) => b.startedAt.localeCompare(a.startedAt)).reduce<Prize[]>((items, play) => {
+    const prize = prizeMap.get(play.prizeId)
+    if (prize && !items.some(item => item.id === prize.id) && items.length < 4) items.push(prize)
+    return items
+  }, [])
+  const playCounts = rankingSource.reduce((counts, play) => counts.set(play.prizeId, (counts.get(play.prizeId) ?? 0) + 1), new Map<string, number>())
+  const frequentPrizes = [...playCounts.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => prizeMap.get(id)).filter((prize): prize is Prize => Boolean(prize)).slice(0, 4)
+  const quickPrizes = quickMode === 'recent' ? recentPrizes : frequentPrizes
 
   const reload = async () => setPrizes(await prizeService.list())
-  useEffect(() => { void prizeService.list().then(setPrizes).catch((e: unknown) => setError(errorText(e))) }, [])
+  useEffect(() => { void Promise.all([prizeService.list(), playRepository.getAll()]).then(([savedPrizes, savedPlays]) => { setPrizes(savedPrizes); setPlays(savedPlays) }).catch((e: unknown) => setError(errorText(e))) }, [])
   const reset = () => { setName(''); setCategory('食品'); setPrice(''); setQuantity('1'); setPriceSource('user'); setUserEditedPrice(true); setPriceBasis('市販商品価格'); setManufacturer(''); setContentDescription(''); setEditing(null); setImageDataUrl(null); setJanCode(''); setReferenceName(''); setReferenceUrl(''); setPriceCheckedAt(todayKey()) }
   const submit = async (event: FormEvent) => {
     event.preventDefault(); if (saving) return; setSaving(true); setError('')
@@ -107,6 +122,7 @@ export function PrizeManager({ store, onBack, onSelectPrize, mode = 'select' }: 
       </section>}
       {error && <p className="feedback error-message" role="alert">{error}</p>}{feedback && <p className="feedback success-message" role="status">{feedback}</p>}
       {!formOpen && <><p>{managementMode ? '登録済み景品の確認、追加、編集、削除ができます。' : 'プレイする景品を選んで、使用額と結果の入力へ進んでください。'}</p>
+      {!managementMode && rankingSource.length > 0 && <section className="quick-prize-panel"><div className="quick-prize-heading"><div><strong>すぐ選べる景品</strong><small>{storePlays.length > 0 ? `${store?.name}での記録` : 'すべての店舗での記録'}</small></div><div role="group" aria-label="景品の表示順"><button className={quickMode === 'recent' ? 'active' : ''} type="button" onClick={() => setQuickMode('recent')}>最近</button><button className={quickMode === 'frequent' ? 'active' : ''} type="button" onClick={() => setQuickMode('frequent')}>よく使う</button></div></div><div className="quick-prize-list">{quickPrizes.map(prize => <button key={prize.id} type="button" onClick={() => onSelectPrize?.(prize)}>{prize.imageDataUrl ? <img src={prize.imageDataUrl} alt="" /> : <span aria-hidden="true">景</span>}<strong>{prize.name}</strong>{quickMode === 'frequent' && <small>{playCounts.get(prize.id)}回</small>}</button>)}</div></section>}
       <button className="primary-wide-button" type="button" onClick={() => { reset(); setError(''); setFeedback(''); setFormOpen(true); window.scrollTo(0, 0) }}>＋ 景品を新規登録</button>
       <section className="prize-filter-panel" aria-label="景品の絞り込み">
         <label htmlFor="prize-search">景品を検索</label>
