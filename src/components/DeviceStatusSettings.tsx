@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { dataHealthService } from '../services/dataHealthService'
 
 type CheckState = 'checking' | 'ok' | 'attention' | 'unknown'
 interface StatusItem { label: string; detail: string; state: CheckState }
@@ -40,6 +41,19 @@ export function DeviceStatusSettings({ onBack }: { onBack: () => void }) {
 
     await checkPermission('geolocation', '位置情報')
     await checkPermission('camera', 'カメラ')
+
+    try {
+      const health = await dataHealthService.check()
+      const issueCount = health.orphanedStores + health.orphanedPrizes + health.invalidPlays
+      const details = [`店舗なし ${health.orphanedStores}件`, `景品なし ${health.orphanedPrizes}件`, `内容不正 ${health.invalidPlays}件`]
+      next.push({
+        label: '記録データ',
+        detail: issueCount === 0 ? `正常です（店舗${health.stores}件・景品${health.prizes}件・プレイ${health.plays}件）` : `${issueCount}件の問題を検出しました（${details.join('・')}）。バックアップ後に確認が必要です`,
+        state: issueCount === 0 ? 'ok' : 'attention',
+      })
+    } catch {
+      next.push({ label: '記録データ', detail: 'データを確認できませんでした。アプリを再読み込みしてください', state: 'attention' })
+    }
 
     next.push({
       label: 'ネットワーク',
@@ -125,7 +139,7 @@ export function DeviceStatusSettings({ onBack }: { onBack: () => void }) {
       {!checking && persistenceSupported && persistentStorage === false && <section className="persistence-action"><strong>保存データを保護する</strong><p>ブラウザへ永続的な保存領域を申請し、自動的なデータ整理の対象になりにくくします。</p><button type="button" onClick={() => void requestPersistence()}>保護を申請</button></section>}
       {persistenceMessage && <p className="feedback success-message" role="status">{persistenceMessage}</p>}
       <button className="secondary-wide-button" type="button" disabled={checking} onClick={() => void check()}>状態を再確認</button>
-      <p className="device-status-note">「ブロックされています」と表示された場合は、Chromeのアドレス欄付近にあるサイト設定から権限を変更できます。保存データを保護した場合も、端末故障やブラウザデータの手動削除に備えてバックアップは継続してください。</p>
+      <p className="device-status-note">「ブロックされています」と表示された場合は、Chromeのアドレス欄付近にあるサイト設定から権限を変更できます。「記録データ」で問題が表示された場合はブラウザデータを削除せず、先にJSONバックアップを作成してください。保存データを保護した場合も、端末故障に備えてバックアップは継続してください。</p>
     </main>
   </div>
 }
