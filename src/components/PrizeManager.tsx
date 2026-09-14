@@ -1,3 +1,4 @@
+import { ProductSearch } from './ProductSearch'
 import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import type { Store } from '../models/store'
 import { priceBasisOptions, prizeCategories, type PriceBasis, type Prize, type PrizeCategory } from '../models/prize'
@@ -125,7 +126,7 @@ export function PrizeManager({ store, onBack, onSelectPrize, mode = 'select' }: 
           {imageDataUrl && <button className="remove-image-button" type="button" onClick={() => setImageDataUrl(null)}>この景品写真を削除</button>}
           <label htmlFor="jan-code">JANコード（任意）</label><div className="barcode-input-row"><input id="jan-code" type="text" inputMode="numeric" value={janCode} onChange={e => setJanCode(e.target.value.replace(/\D/g, '').slice(0, 13))} placeholder="8桁または13桁" /><button type="button" onClick={() => setScannerOpen(true)}>カメラで読取</button></div>
           {duplicateJanPrize && <aside className="prize-name-suggestions exact-match" aria-live="polite"><strong>同じJANコードの景品が登録されています</strong><ul><li><span>{duplicateJanPrize.name}</span><small>{duplicateJanPrize.category}{duplicateJanPrize.manufacturer ? `・${duplicateJanPrize.manufacturer}` : ''}</small></li></ul><p>同じ商品であれば、新規登録せず既存の景品を利用できます。</p></aside>}
-          <p className="product-search-paused">JANコードの商品自動検索は、外部サーバー対応まで準備中です。コードの保存とカメラ読取は利用できます。</p>
+          <ProductSearch jan={janCode} name={name} onSelect={p=>{setName(p.name.slice(0,100));setPrice(String(p.price));setQuantity('1');setPriceSource('yahoo');setUserEditedPrice(false);setReferenceName(p.sellerName.slice(0,80));setReferenceUrl(p.url);setPriceCheckedAt(todayKey());setJanCode(p.janCode||'');setPriceBasis('市販商品価格')}}/>
           <div className="form-row"><div><label htmlFor="category">カテゴリ</label><select id="category" value={category} onChange={e => { const next = e.target.value as PrizeCategory; setCategory(next); setPriceBasis(next === 'フィギュア' || next === 'ぬいぐるみ' ? 'プライズ品の市場相場' : next === 'その他' ? 'その他の手入力' : '市販商品価格') }}>{prizeCategories.map(item => <option key={item}>{item}</option>)}</select></div>
           <div><label htmlFor="price">1個あたりの参考価格（円）</label><input id="price" type="number" inputMode="numeric" min="0" max="1000000" step="1" value={price} onChange={e => { setPrice(e.target.value); setPriceSource('user'); setUserEditedPrice(true) }} placeholder="0" /></div></div>
           <p className={`price-origin ${userEditedPrice ? 'edited' : 'automatic'}`}>{userEditedPrice ? 'ユーザー編集価格' : 'Yahoo!ショッピング取得価格'}</p>

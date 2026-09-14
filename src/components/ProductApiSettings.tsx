@@ -1,20 +1,8 @@
-import { useEffect, useState } from 'react'
-import { productApiSettingService } from '../services/productApiSettingService'
-
-interface Props { onBack: () => void }
-export function ProductApiSettings({ onBack }: Props) {
-  const [saved, setSaved] = useState(false)
-  const [message, setMessage] = useState('')
-
-  useEffect(() => { void productApiSettingService.getYahooClientId().then(value => setSaved(Boolean(value))) }, [])
-  const remove = async () => {
-    if (!confirm('この端末に保存したClient IDを削除しますか？')) return
-    await productApiSettingService.removeYahooClientId(); setSaved(false); setMessage('Client IDを削除しました。')
-  }
-
-  return <div className="app-shell"><header className="page-header"><button className="back-button" type="button" onClick={onBack}>‹</button><div><p className="app-eyebrow">PRODUCT API</p><h1>商品検索設定</h1></div></header><main className="store-main">
-    <section className="api-setting-card paused"><span>準備中</span><h2>Yahoo!ショッピング商品検索</h2><p>ブラウザから直接接続すると通信制限とClient ID公開の問題があるため、現在は検索機能を停止しています。安全に中継する外部サーバーを用意した段階で再開できます。</p></section>
-    <section className="api-saved-status"><strong>Client ID</strong><span>{saved ? 'この端末に保存済みです' : '保存されていません'}</span><small>保存済みのIDは検索再開に備えて、そのまま保管できます。JSONバックアップには含まれません。</small>{saved && <button className="api-key-remove" type="button" onClick={() => void remove()}>保存済みClient IDを削除</button>}</section>
-    {message && <p className="feedback success-message" role="status">{message}</p>}
-  </main></div>
+import { useEffect,useState,useRef } from 'react'
+import { productProxyService } from '../services/productProxyService'
+export function ProductApiSettings({onBack}:{onBack:()=>void}){
+ const [url,setUrl]=useState('');const [token,setToken]=useState('');const [message,setMessage]=useState('');const [error,setError]=useState('');const [busy,setBusy]=useState(false);const lock=useRef(false)
+ useEffect(()=>{void productProxyService.settings().then(s=>{setUrl(s.url);setToken(s.token)}).catch(()=>setError('設定を読み込めませんでした。'))},[])
+ const run=async(check:boolean)=>{if(lock.current)return;lock.current=true;setBusy(true);setError('');setMessage('');try{await productProxyService.save(url,token);setMessage('設定を保存しました。');if(check){await productProxyService.search('ポテトチップス','query');setMessage('Yahoo!への接続に成功しました。')}}catch(e){setError(e instanceof Error?e.message:'処理に失敗しました。')}finally{setBusy(false);lock.current=false}}
+ return <div className="app-shell"><header className="page-header"><button type="button" className="back-button" onClick={onBack}>‹</button><h1>商品検索設定</h1></header><main className="store-main"><section className="api-setting-card"><p>接続用キーはCloudflareに保存した APP_ACCESS_TOKEN と同じ値です。Yahoo!のClient IDは入力しません。</p><p>キーはこの端末に保存し、JSONバックアップには含めません。接続確認は実際に商品を検索します。</p></section><form className="api-key-form" onSubmit={e=>{e.preventDefault();void run(false)}}><label htmlFor="proxy-url">WorkerのURL</label><input id="proxy-url" type="url" required value={url} onChange={e=>setUrl(e.target.value)} placeholder="https://crane-product-api.～.workers.dev" disabled={busy}/><label htmlFor="proxy-token">接続用キー</label><input id="proxy-token" type="password" autoComplete="off" required value={token} onChange={e=>setToken(e.target.value)} disabled={busy}/><button disabled={busy} type="submit">設定を保存</button><button disabled={busy} type="button" onClick={()=>void run(true)}>{busy?'処理中…':'保存して接続確認'}</button></form>{message&&<p className="feedback success-message" role="status">{message}</p>}{error&&<p className="feedback error-message" role="alert">{error}</p>}</main></div>
 }
