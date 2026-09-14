@@ -1,3 +1,4 @@
+import { MoneyInput } from './MoneyInput'
 import { useEffect, useRef, useState } from 'react'
 import type { Store } from '../models/store'
 import type { Prize } from '../models/prize'
@@ -5,7 +6,7 @@ import type { PlayRecord, PlayResult } from '../models/play'
 import { playService } from '../services/playService'
 import { defaultQuickAmounts, playInputSettingService } from '../services/playInputSettingService'
 
-interface Props { store:Store; prize:Prize; onBack:()=>void; onSaved:()=>void }
+interface Props { store:Store; prize:Prize; onBack:()=>void; onSaved:(record:PlayRecord)=>void }
 export function PlayRecorder({store,prize,onBack,onSaved}:Props) {
   const [amount,setAmount]=useState(0); const [direct,setDirect]=useState(''); const [records,setRecords]=useState<PlayRecord[]>([]); const [quickAmounts,setQuickAmounts]=useState(defaultQuickAmounts); const [message,setMessage]=useState(''); const [undoRecord,setUndoRecord]=useState<PlayRecord|null>(null); const [error,setError]=useState(''); const [saving,setSaving]=useState(false)
   const saveLock=useRef(false)
@@ -13,14 +14,14 @@ export function PlayRecorder({store,prize,onBack,onSaved}:Props) {
   useEffect(()=>{ void playInputSettingService.getQuickAmounts().then(setQuickAmounts).catch(()=>setError('金額設定を読み込めませんでした。初期金額で入力できます。')) },[])
   useEffect(()=>{if(!undoRecord)return;const timer=window.setTimeout(()=>setUndoRecord(null),10000);return()=>window.clearTimeout(timer)},[undoRecord])
   const add=(value:number)=>{ setAmount(current=>current+value); setDirect(''); setError('') }
-  const record=async(result:PlayResult)=>{ if(saveLock.current)return;saveLock.current=true;try { setSaving(true); setError(''); const finalAmount=direct===''?amount:Number(direct); const saved=await playService.create({storeId:store.id,prizeId:prize.id,amount:finalAmount,result}); setRecords(await playService.today(store.id,prize.id));setAmount(0); setDirect(''); setUndoRecord(saved);setMessage(`${result}として記録しました。`); onSaved() } catch(e) { setError(e instanceof Error?e.message:'記録に失敗しました。') } finally { saveLock.current=false;setSaving(false) } }
-  const undo=async()=>{if(!undoRecord||saving)return;try{setSaving(true);setError('');await playService.remove(undoRecord.id);setUndoRecord(null);setMessage('直前の追加を取り消しました。');setRecords(await playService.today(store.id,prize.id));onSaved()}catch(e){setError(e instanceof Error?e.message:'取り消しに失敗しました。')}finally{setSaving(false)}}
+  const record=async(result:PlayResult)=>{ if(saveLock.current)return;saveLock.current=true;try { setSaving(true); setError(''); const finalAmount=direct===''?amount:Number(direct); const saved=await playService.create({storeId:store.id,prizeId:prize.id,amount:finalAmount,result}); setRecords(await playService.today(store.id,prize.id));setAmount(0); setDirect(''); setUndoRecord(saved);setMessage(`${result}として記録しました。`); onSaved(saved) } catch(e) { setError(e instanceof Error?e.message:'記録に失敗しました。') } finally { saveLock.current=false;setSaving(false) } }
+  const undo=async()=>{if(!undoRecord||saving)return;try{setSaving(true);setError('');await playService.remove(undoRecord.id);setUndoRecord(null);setMessage('直前の追加を取り消しました。');setRecords(await playService.today(store.id,prize.id));onSaved(undoRecord)}catch(e){setError(e instanceof Error?e.message:'取り消しに失敗しました。')}finally{setSaving(false)}}
   const leave=(next:()=>void)=>{ if (saving) return; if (direct!=='' || amount>0) { setError('入力中の使用額が残っています。結果を選んで記録するか、金額をクリアしてください。'); return } next() }
   const total=records.reduce((sum,item)=>sum+item.amount,0); const wins=records.filter(item=>item.result!=='撤退').length
   return <div className="app-shell"><header className="page-header"><button className="back-button" type="button" onClick={()=>leave(onBack)}>‹</button><div><p className="app-eyebrow">PLAY RECORD</p><h1>プレイを記録</h1></div></header>
     <main className="store-main"><section className="play-context"><span>{store.name}</span><strong>{prize.name}</strong><small>{prize.category}・参考価格 {prize.estimatedPrice.toLocaleString()}円</small></section>
       <section className="amount-card"><p>今回の使用額</p><strong>{(direct===''?amount:Number(direct||0)).toLocaleString()}<small>円</small></strong><div className="quick-buttons">{quickAmounts.map(value=><button type="button" key={value} onClick={()=>add(value)}>+{value.toLocaleString()}円</button>)}</div>
-        <label htmlFor="direct-amount">今回の使用額を直接入力</label><input id="direct-amount" type="number" inputMode="numeric" min="1" max="1000000" value={direct} onChange={e=>{setDirect(e.target.value);setAmount(0)}} placeholder="例：1300" />
+        <label htmlFor="direct-amount">今回の使用額を直接入力</label><MoneyInput id="direct-amount" type="number" inputMode="numeric" min="1" max="1000000" value={direct} onChange={e=>{setDirect(e.target.value);setAmount(0)}} placeholder="例：1300" />
         <button className="clear-amount" type="button" onClick={()=>{setAmount(0);setDirect('')}}>金額をクリア</button>
       </section>
       <section className="result-card"><h2>結果を選んで記録</h2><div className="result-buttons"><button disabled={saving} type="button" onClick={()=>void record('獲得')}>獲得</button><button disabled={saving} type="button" onClick={()=>void record('撤退')}>撤退</button><button disabled={saving} type="button" onClick={()=>void record('アシスト獲得')}>アシスト獲得</button></div></section>

@@ -1,3 +1,5 @@
+import type { PlayRecord } from './models/play'
+import { playService } from './services/playService'
 import { StoreToday } from './components/StoreToday'
 import { useCallback, useEffect, useState, type ChangeEvent, type FormEvent } from 'react'
 import type { Store } from './models/store'
@@ -35,6 +37,11 @@ const normalizeDuplicateName = (value: string) => value.trim().replace(/[\s　]+
 
 function App() {
   const [screen, setScreen] = useState<Screen>('home')
+  const [savedPlay,setSavedPlay]=useState<PlayRecord|null>(null)
+  const [undoBusy,setUndoBusy]=useState(false)
+  const [refresh,setRefresh]=useState(0)
+  useEffect(()=>{if(!savedPlay)return;const timer=setTimeout(()=>setSavedPlay(null),10000);return()=>clearTimeout(timer)},[savedPlay])
+  const undoSaved=async()=>{if(!savedPlay||undoBusy)return;setUndoBusy(true);try{await playService.remove(savedPlay.id);setSavedPlay(null);setRefresh(n=>n+1)}catch{window.alert('取り消しに失敗しました。履歴を確認してください。')}finally{setUndoBusy(false)}}
   const [stores, setStores] = useState<Store[]>([])
   const [selectedStore, setSelectedStore] = useState<Store | null>(null)
   const [selectedPrize, setSelectedPrize] = useState<Prize | null>(null)
@@ -256,10 +263,10 @@ function App() {
 
   const toggleStoreArchived=async(store:Store)=>{try{setError('');await storeService.setArchived(store.id,!store.isArchived);setMessage(store.isArchived?'店舗を利用中に戻しました。':'店舗を利用停止にしました。過去の履歴は残ります。');await loadStores()}catch(e){setMessage('');setError(getErrorMessage(e))}}
 
-  if (screen === 'store-today' && selectedStore) return <StoreToday store={selectedStore} onAdd={() => setScreen('prizes')} onFinish={() => setScreen('home')} onSelect={(prize) => { setSelectedPrize(prize); setPlayOrigin('store-today'); setScreen('play') }} onOpenDetail={(visit,prizeId)=>{setSelectedVisit(visit);setSelectedVisitPrizeId(prizeId);setPrizeDetailOrigin('store-today');setScreen('prize-detail')}} />
+  if (screen === 'store-today' && selectedStore) return <><StoreToday key={refresh} store={selectedStore} onAdd={() => setScreen('prizes')} onFinish={() => setScreen('home')} onSelect={(prize) => { setSelectedPrize(prize); setPlayOrigin('store-today'); setScreen('play') }} onOpenDetail={(visit,prizeId)=>{setSelectedVisit(visit);setSelectedVisitPrizeId(prizeId);setPrizeDetailOrigin('store-today');setScreen('prize-detail')}} />{savedPlay&&<div className="undo-toast" role="status"><span>{savedPlay.amount.toLocaleString()}円・{savedPlay.result}を記録しました。</span><button type="button" disabled={undoBusy} onClick={()=>void undoSaved()}>取り消す</button></div>}</>
 
   if (screen === 'play' && selectedStore && selectedPrize) {
-    return <PlayRecorder store={selectedStore} prize={selectedPrize} onBack={() => setScreen(playOrigin)} onSaved={() => setScreen('store-today')} />
+    return <PlayRecorder store={selectedStore} prize={selectedPrize} onBack={() => setScreen(playOrigin)} onSaved={(record) => {setSavedPlay(record);setScreen('store-today')}} />
   }
 
   if (screen === 'visit-detail' && selectedVisit) {
