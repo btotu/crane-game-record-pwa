@@ -64,6 +64,7 @@ function App() {
   const [storeImageDataUrl, setStoreImageDataUrl] = useState<string | null>(null)
   const [isProcessingImage, setIsProcessingImage] = useState(false)
   const [nearbyCandidates, setNearbyCandidates] = useState<NearbyStoreCandidate[]>([])
+  const [facilityPicker,setFacilityPicker]=useState(false)
   const [isSearchingNearby, setIsSearchingNearby] = useState(false)
 
   const loadStores = useCallback(async () => {
@@ -113,6 +114,7 @@ function App() {
   }
 
   const resetForm = () => {
+    setFacilityPicker(false)
     setStoreName('')
     setEditingStore(null)
     setStorePosition(null)
@@ -179,6 +181,12 @@ function App() {
     }
   }
 
+  const findRegistered=(candidate:NearbyStoreCandidate)=>stores.find(store=>store.externalStoreId===candidate.externalStoreId)||stores.find(store=>normalizeDuplicateName(store.name)===normalizeDuplicateName(candidate.name)&&store.latitude!=null&&store.longitude!=null&&locationService.distanceMeters({latitude:store.latitude,longitude:store.longitude},candidate)<150)
+  const chooseFacility=async(candidate:NearbyStoreCandidate)=>{
+    const existing=findRegistered(candidate)
+    if(existing){setFacilityPicker(false);setNearbyCandidates([]);startEditing(existing);setMessage(existing.isArchived?'登録済みの店舗です。利用する場合は一覧から利用再開してください。':'登録済みの店舗情報を開きました。');return}
+    setStoreName(candidate.name);setStorePosition({latitude:candidate.latitude,longitude:candidate.longitude,accuracy:0});setFacilityPicker(false);setNearbyCandidates([]);setMessage('施設名と位置を反映しました。「店舗を登録」で保存してください。')
+  }
   const locate = async (target: 'store' | 'selection') => {
     try {
       setIsLocating(true)
@@ -186,7 +194,7 @@ function App() {
       const position = await locationService.getCurrent()
       if (target === 'store') {
         setStorePosition(position)
-        setMessage(`現在地を取得しました（精度 約${Math.round(position.accuracy)}m）。店舗を保存すると位置情報も保存されます。`)
+        setFacilityPicker(true);setIsSearchingNearby(true);setMessage('現在地を取得しました。周辺のゲームセンターを検索しています。');try{setNearbyCandidates(await nearbyStoreService.search(position));setMessage('施設を選ぶと店舗名と施設の位置を反映します。見つからない場合は現在地のまま手動登録できます。')}finally{setIsSearchingNearby(false)}
       } else {
         setCurrentPosition(position)
       }
@@ -220,11 +228,9 @@ function App() {
       const position = await locationService.getCurrent()
       setCurrentPosition(position)
       const candidates = await nearbyStoreService.search(position)
-      const registeredExternalIds = new Set(stores.map(store => store.externalStoreId).filter(Boolean))
-      const registeredNames = new Set(stores.map(store => store.name.trim().toLocaleLowerCase('ja-JP')))
-      const unregistered = candidates.filter(candidate => !registeredExternalIds.has(candidate.externalStoreId) && !registeredNames.has(candidate.name.trim().toLocaleLowerCase('ja-JP')))
+      const unregistered = candidates
       setNearbyCandidates(unregistered)
-      setMessage(unregistered.length === 0 ? '周辺5kmに未登録の店舗候補は見つかりませんでした。必要な店舗は手動で登録できます。' : '')
+      setMessage(unregistered.length === 0 ? '周辺5kmに店舗候補は見つかりませんでした。必要な店舗は手動で登録できます。' : '')
     } catch (searchError) {
       setNearbyCandidates([])
       setError(getErrorMessage(searchError))
@@ -237,6 +243,8 @@ function App() {
     try {
       setIsSaving(true)
       setError('')
+      const existing=findRegistered(candidate)
+      if(existing){if(existing.isArchived){setError('この店舗は利用停止中です。「店舗を追加・編集」から利用再開してください。');return}setSelectedStore(existing);setScreen('store-today');return}
       const store = await storeService.create({ name: candidate.name, latitude: candidate.latitude, longitude: candidate.longitude, externalStoreId: candidate.externalStoreId })
       setStores(current => [store, ...current])
       setSelectedStore(store)
@@ -307,8 +315,8 @@ function App() {
             {storesWithDistance.map(({store,distance}) => <li key={store.id}><button type="button" onClick={() => { setSelectedStore(store); setScreen('store-today') }}>{store.imageDataUrl ? <img className="store-list-photo" src={store.imageDataUrl} alt="" /> : <span className="store-avatar" aria-hidden="true">店</span>}<strong>{store.name}{distance != null && <small>{distance < 1000 ? `約${Math.round(distance / 10) * 10}m` : `約${(distance / 1000).toFixed(1)}km`}</small>}</strong><span aria-hidden="true">›</span></button></li>)}
           </ul>
           <section className="nearby-search-section">
-            <button className="nearby-search-button" type="button" disabled={isSearchingNearby} onClick={() => void searchNearbyStores()}>{isSearchingNearby ? '周辺を検索中…' : '周辺5kmの未登録店舗を検索'}</button>
-            {nearbyCandidates.length > 0 && <><div className="nearby-heading"><strong>周辺の店舗候補</strong><span>{nearbyCandidates.length}件</span></div><ul className="nearby-candidate-list">{nearbyCandidates.map(candidate => <li key={candidate.externalStoreId}><div><strong>{candidate.name}</strong><span>{candidate.distanceMeters < 1000 ? `約${Math.round(candidate.distanceMeters / 10) * 10}m` : `約${(candidate.distanceMeters / 1000).toFixed(1)}km`}</span></div><button type="button" disabled={isSaving} onClick={() => void selectNearbyStore(candidate)}>登録して選択</button></li>)}</ul></>}
+            <button className="nearby-search-button" type="button" disabled={isSearchingNearby} onClick={() => void searchNearbyStores()}>{isSearchingNearby ? '周辺を検索中…' : '周辺5kmの店舗を選択'}</button>
+            {nearbyCandidates.length > 0 && <><div className="nearby-heading"><strong>周辺の店舗候補</strong><span>{nearbyCandidates.length}件</span></div><ul className="nearby-candidate-list">{nearbyCandidates.map(candidate => <li key={candidate.externalStoreId}><div><strong>{candidate.name}</strong><span>{candidate.distanceMeters < 1000 ? `約${Math.round(candidate.distanceMeters / 10) * 10}m` : `約${(candidate.distanceMeters / 1000).toFixed(1)}km`}</span></div><button type="button" disabled={isSaving} onClick={() => void selectNearbyStore(candidate)}>{findRegistered(candidate)?.isArchived?'利用停止中':findRegistered(candidate)?'登録済み・選択':'登録して選択'}</button></li>)}</ul></>}
             <p className="osm-attribution">候補データ © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap contributors</a></p>
           </section>
           <button className="secondary-wide-button" type="button" onClick={() => openStores('select-store')}>店舗を追加・編集</button>
@@ -344,6 +352,7 @@ function App() {
                 <button type="button" disabled={isLocating} onClick={() => void locate('store')}>{isLocating ? '取得中…' : storePosition ? '現在地を取り直す' : '現在地を店舗位置にする'}</button>
                 {storePosition ? <span>位置情報あり{storePosition.accuracy > 0 ? `・精度 約${Math.round(storePosition.accuracy)}m` : ''}</span> : <span>位置情報なし</span>}
               </div>
+{facilityPicker&&<section className="nearby-search-section"><strong>周辺のゲームセンターから選択</strong><p>施設の位置を保存します。候補にない施設は手動で入力できます。</p>{isSearchingNearby?<p role="status">検索中…</p>:nearbyCandidates.length===0?<p>候補が見つかりませんでした。</p>:<ul className="nearby-candidate-list">{nearbyCandidates.map(candidate=><li key={candidate.externalStoreId}><div><strong>{candidate.name}</strong><span>約{Math.round(candidate.distanceMeters)}m{findRegistered(candidate)?'・登録済み':''}</span></div><button type="button" onClick={()=>void chooseFacility(candidate)}>{findRegistered(candidate)?'既存店舗を開く':'この施設を選ぶ'}</button></li>)}</ul>}<button type="button" className="secondary-wide-button" onClick={()=>setFacilityPicker(false)}>現在地のまま手動入力する</button><p className="osm-attribution">施設情報 © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap contributors</a></p></section>}
               {storePosition && <button className="clear-location-button" type="button" onClick={() => setStorePosition(null)}>保存する位置情報を解除</button>}
               <div className="form-actions">
                 {editingStore && <button className="secondary-button" type="button" onClick={resetForm}>キャンセル</button>}
